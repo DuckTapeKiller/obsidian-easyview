@@ -6,7 +6,7 @@ on:
       - "*"
 
 permissions:
-  contents: write  # <--- THIS IS THE FIX. IT ALLOWS CREATING RELEASES.
+  contents: write
 
 jobs:
   build:
