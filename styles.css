@@ -1,0 +1,85 @@
+/* EasyView Plugin Styles */
+
+
+
+
+
+.theme-light .easy-view-btn {
+    background-color: var(--b-light-bg);
+}
+
+.theme-dark .easy-view-btn {
+    background-color: var(--b-dark-bg);
+}
+
+/* Theme Button - inherits the exact same square geometry */
+
+
+/* Hover Effects match Theme Selection */
+/* Specificity Boost: body.theme... */
+body.theme-light .easy-view-btn:hover {
+    background-color: var(--b-light-selection) !important;
+    color: var(--b-light-text-main) !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+body.theme-dark .easy-view-btn:hover {
+    background-color: var(--b-dark-selection) !important;
+    color: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Base Hover fallback */
+.easy-view-btn:hover {
+    border: none !important;
+    box-shadow: none !important;
+    /* Prevent shrinking by ensuring no border/padding shift occurs */
+}
+
+/* Prevent container from lighting up on hover */
+/* Prevent container from lighting up on hover, AND remove padding to let buttons fill it */
+.status-bar-item.plugin-easy-view {
+    padding: 0 !important;
+    gap: 0 !important;
+}
+
+.status-bar-item.plugin-easy-view:hover {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Adjust Buttons to fill available height and remain square */
+.easy-view-btn {
+    /* Base styles */
+    border: none !important;
+    box-shadow: none !important;
+    color: var(--text-muted);
+    font-weight: bold;
+    cursor: pointer;
+    font-family: var(--font-interface);
+
+    font-size: 11px;
+
+    /* Fill height but forced square */
+    height: auto;
+    min-height: 24px;
+    /* Standard status bar height */
+    aspect-ratio: 1 / 1;
+    /* Forces perfect square regardless of content */
+
+    padding: 0;
+    /* padding removed so aspect-ratio controls the width */
+    margin: 0;
+
+    /* Flex centering */
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    line-height: 1;
+
+    border-radius: 0 !important;
+    box-sizing: border-box;
+}
