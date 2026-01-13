@@ -3,7 +3,10 @@ name: Release Obsidian Plugin
 on:
   push:
     tags:
-      - "*" # Triggers when you push a tag like 1.0.0
+      - "*"
+
+permissions:
+  contents: write  # <--- THIS IS THE FIX. IT ALLOWS CREATING RELEASES.
 
 jobs:
   build:
