@@ -4,8 +4,8 @@ export default class EasyViewPlugin extends Plugin {
     statusBarItem: HTMLElement | null = null;
     themeBtn: HTMLElement | null = null;
 
-    async onload() {
-        console.log('Loading EasyView plugin');
+    onload() {
+        console.debug('Loading EasyView plugin');
 
         this.statusBarItem = this.addStatusBarItem();
 
@@ -31,8 +31,8 @@ export default class EasyViewPlugin extends Plugin {
         }));
     }
 
-    async onunload() {
-        console.log('Unloading EasyView plugin');
+    onunload() {
+        console.debug('Unloading EasyView plugin');
         if (this.statusBarItem) {
             this.statusBarItem.remove();
         }
