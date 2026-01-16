@@ -1,5 +1,7 @@
 # Easy View
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/ducktapekiller)
+
 Easy View is a simple Obsidian plugin that adds accessibility controls directly to the status bar. It allows you to quickly adjust the base font size and toggle between light and dark modes without opening settings.
 
 ## Features
