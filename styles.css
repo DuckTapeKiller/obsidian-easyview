@@ -94,7 +94,10 @@ body.easyview-force-width .markdown-preview-view {
     margin-right: 0 !important;
 }
 
-/* Focus Mode */
+/* ================================================================= */
+/* FOCUS MODE                                                        */
+/* Hides sidebars and ribbon, keeps tabs and status bar              */
+/* ================================================================= */
 body.easyview-focus-mode .workspace-ribbon {
     display: none !important;
 }
@@ -104,4 +107,74 @@ body.easyview-focus-mode .workspace-split.mod-right-split {
     display: none !important;
 }
 
-/* Optional: Hide header for ultra focus? User primarily asked to hide sidebars/ribbon. */
+/* macOS: Add padding for window control buttons when ribbon is hidden */
+body.easyview-focus-mode .workspace-tab-header-container {
+    padding-left: 72px !important;
+    /* Space for macOS traffic light buttons */
+}
+
+/* Also handle the titlebar area if using custom frame */
+body.easyview-focus-mode .titlebar-button-container {
+    margin-left: 72px !important;
+}
+
+/* ================================================================= */
+/* ZEN MODE (Ultra Focus)                                            */
+/* Hides EVERYTHING except the content                               */
+/* ================================================================= */
+body.easyview-zen-mode .workspace-ribbon {
+    display: none !important;
+}
+
+body.easyview-zen-mode .workspace-split.mod-left-split,
+body.easyview-zen-mode .workspace-split.mod-right-split {
+    display: none !important;
+}
+
+body.easyview-zen-mode .workspace-tab-header-container {
+    display: none !important;
+}
+
+body.easyview-zen-mode .status-bar {
+    display: none !important;
+}
+
+/* Hide the titlebar in Zen mode */
+body.easyview-zen-mode .titlebar {
+    display: none !important;
+}
+
+/* Ensure content takes full height in Zen mode */
+body.easyview-zen-mode .workspace-leaf-content {
+    padding-top: 0 !important;
+}
+
+/* macOS: Add top padding for window controls in Zen mode */
+body.easyview-zen-mode .view-content {
+    padding-top: 28px !important;
+    /* Height of macOS title bar */
+}
+
+/* Make the editor area truly full-screen */
+body.easyview-zen-mode .workspace-tabs {
+    padding-top: 0 !important;
+}
+
+/* ================================================================= */
+/* LINE HEIGHT                                                       */
+/* ================================================================= */
+body {
+    --line-height-custom: 1.5;
+}
+
+.markdown-source-view.mod-cm6 .cm-line,
+.markdown-preview-view p,
+.markdown-preview-view li {
+    line-height: var(--line-height-custom) !important;
+}
+
+/* ================================================================= */
+/* NOTIFICATION STYLES                                               */
+/* ================================================================= */
+/* Obsidian's Notice component handles styling, but we can add        */
+/* our own class if needed in the future                              */

@@ -103,6 +103,9 @@ var DARK_BODY_COLORS = {
   "#f5f5f5": "#f5f5f5",
   "#ffffff": "#ffffff"
 };
+var STYLE_SETTINGS_SECTION_ID = "brutalist-theme";
+var LINE_HEIGHTS = [1.4, 1.5, 1.6, 1.8, 2];
+var LINE_HEIGHT_LABELS = ["Compact (1.4)", "Normal (1.5)", "Relaxed (1.6)", "Spacious (1.8)", "Double (2.0)"];
 var DEFAULT_SETTINGS = {
   buttonSize: 13,
   showIncrementBtn: true,
@@ -112,29 +115,48 @@ var DEFAULT_SETTINGS = {
   defaultFontSize: 16,
   showLineWidthBtn: false,
   showFocusBtn: false,
+  showZenBtn: false,
   showFontBtn: false,
   showColorBtn: false,
+  showLineHeightBtn: false,
+  showReadingModeBtn: false,
+  // State Persistence Defaults
+  focusModeActive: false,
+  zenModeActive: false,
+  lineWidthExpanded: false,
+  activeFontPreset: 0,
+  activeColorPreset: 0,
+  activeLineHeightIndex: 1,
+  // Default to 1.5
+  // Notifications
+  showNotifications: true,
   // Defaults P1 (Serif-ish)
+  fontPreset1Name: "Serif",
   fontPreset1Body: "'Libre Baskerville', serif",
   fontPreset1UI: "'Libre Baskerville', serif",
   fontPreset1Mono: "'Noto Sans Mono', monospace",
   // Defaults P2 (Mono)
+  fontPreset2Name: "Mono",
   fontPreset2Body: "'Noto Sans Mono', monospace",
   fontPreset2UI: "'Noto Sans Mono', monospace",
   fontPreset2Mono: "'Noto Sans Mono', monospace",
   // Defaults P3 (Sans)
+  fontPreset3Name: "Sans",
   fontPreset3Body: "'Sen', sans-serif",
   fontPreset3UI: "'Sen', sans-serif",
   fontPreset3Mono: "'Noto Sans Mono', monospace",
-  // Defaults Colors (Distinct defaults)
+  // Defaults Colors
+  colorPreset1Name: "High Contrast",
   colorPreset1LightUI: "#222222",
   colorPreset1LightBody: "#202020",
   colorPreset1DarkUI: "#e2e2e2",
   colorPreset1DarkBody: "#e2e2e2",
+  colorPreset2Name: "Soft",
   colorPreset2LightUI: "#505050",
   colorPreset2LightBody: "#505050",
   colorPreset2DarkUI: "#bcbcbc",
   colorPreset2DarkBody: "#bcbcbc",
+  colorPreset3Name: "Maximum",
   colorPreset3LightUI: "#000000",
   colorPreset3LightBody: "#000000",
   colorPreset3DarkUI: "#ffffff",
@@ -145,15 +167,13 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     super(...arguments);
     this.statusBarItem = null;
     this.themeBtn = null;
-    this.fontState = 0;
-    // 0: Default, 1: P1, 2: P2, 3: P3
-    this.colorState = 0;
   }
-  // 0: Default, 1: P1, 2: P2, 3: P3
   async onload() {
     console.debug("Loading EasyView plugin");
     await this.loadSettings();
     this.addSettingTab(new EasyViewSettingTab(this.app, this));
+    this.registerCommands();
+    this.restoreStates();
     this.refreshStatusBar();
     this.registerEvent(this.app.workspace.on("css-change", () => {
       this.updateThemeIcon();
@@ -164,8 +184,10 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     if (this.statusBarItem) this.statusBarItem.remove();
     document.body.classList.remove("easyview-force-width");
     document.body.classList.remove("easyview-focus-mode");
+    document.body.classList.remove("easyview-zen-mode");
     this.clearFontOverrides();
     this.clearColorOverrides();
+    this.clearLineHeightOverride();
   }
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -174,20 +196,136 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     await this.saveData(this.settings);
     this.refreshStatusBar();
   }
+  /**
+   * Show a notification if enabled
+   */
+  notify(message, duration = 1500) {
+    if (this.settings.showNotifications) {
+      new import_obsidian.Notice(message, duration);
+    }
+  }
+  /**
+   * Register all command palette commands
+   */
+  registerCommands() {
+    this.addCommand({
+      id: "toggle-focus-mode",
+      name: "Toggle Focus Mode",
+      callback: () => this.toggleFocusMode()
+    });
+    this.addCommand({
+      id: "toggle-zen-mode",
+      name: "Toggle Zen Mode (Ultra Focus)",
+      callback: () => this.toggleZenMode()
+    });
+    this.addCommand({
+      id: "toggle-line-width",
+      name: "Toggle Line Width (Standard/Full)",
+      callback: () => this.toggleLineWidth()
+    });
+    this.addCommand({
+      id: "toggle-theme",
+      name: "Toggle Theme (Light/Dark)",
+      callback: () => this.toggleTheme()
+    });
+    this.addCommand({
+      id: "cycle-font-preset",
+      name: "Cycle Font Preset",
+      callback: () => this.cycleFont()
+    });
+    this.addCommand({
+      id: "cycle-color-preset",
+      name: "Cycle Color Preset",
+      callback: () => this.cycleColor()
+    });
+    this.addCommand({
+      id: "cycle-reading-mode",
+      name: "Cycle Reading Mode (Source/Live/Reading)",
+      callback: () => this.cycleReadingMode()
+    });
+    this.addCommand({
+      id: "cycle-line-height",
+      name: "Cycle Line Height",
+      callback: () => this.cycleLineHeight()
+    });
+    this.addCommand({
+      id: "increase-font-size",
+      name: "Increase Font Size",
+      callback: () => this.adjustFontSize(1)
+    });
+    this.addCommand({
+      id: "decrease-font-size",
+      name: "Decrease Font Size",
+      callback: () => this.adjustFontSize(-1)
+    });
+    this.addCommand({
+      id: "reset-font-size",
+      name: "Reset Font Size",
+      callback: () => this.resetFontSize()
+    });
+    for (let i = 1; i <= 3; i++) {
+      this.addCommand({
+        id: `select-font-preset-${i}`,
+        name: `Select Font Preset ${i}`,
+        callback: () => this.selectFontPreset(i)
+      });
+      this.addCommand({
+        id: `select-color-preset-${i}`,
+        name: `Select Color Preset ${i}`,
+        callback: () => this.selectColorPreset(i)
+      });
+    }
+  }
+  /**
+   * Restore persisted states on load
+   */
+  restoreStates() {
+    if (this.settings.focusModeActive) {
+      document.body.classList.add("easyview-focus-mode");
+    }
+    if (this.settings.zenModeActive) {
+      document.body.classList.add("easyview-zen-mode");
+    }
+    if (this.settings.lineWidthExpanded) {
+      document.body.classList.add("easyview-force-width");
+    }
+    if (this.settings.activeFontPreset > 0) {
+      const n = this.settings.activeFontPreset;
+      const body = this.settings[`fontPreset${n}Body`];
+      const ui = this.settings[`fontPreset${n}UI`];
+      const mono = this.settings[`fontPreset${n}Mono`];
+      this.applyFont(body, ui, mono, false);
+    }
+    if (this.settings.activeColorPreset > 0) {
+      const n = this.settings.activeColorPreset;
+      const lightUI = this.settings[`colorPreset${n}LightUI`];
+      const lightBody = this.settings[`colorPreset${n}LightBody`];
+      const darkUI = this.settings[`colorPreset${n}DarkUI`];
+      const darkBody = this.settings[`colorPreset${n}DarkBody`];
+      this.applyColor(lightUI, lightBody, darkUI, darkBody, false);
+    }
+    this.applyLineHeight(this.settings.activeLineHeightIndex, false);
+  }
   refreshStatusBar() {
     if (this.statusBarItem) this.statusBarItem.empty();
     else this.statusBarItem = this.addStatusBarItem();
     this.statusBarItem.addClass("plugin-easyview");
     this.statusBarItem.addClass("easy-view-container-unique");
     this.statusBarItem.style.setProperty("--easy-view-btn-size", `${this.settings.buttonSize}px`);
+    this.statusBarItem.oncontextmenu = (e) => {
+      e.preventDefault();
+      this.showContextMenu(e);
+    };
     if (this.settings.showDecrementBtn) {
       const minusBtn = this.statusBarItem.createEl("button", { cls: "easy-view-btn" });
       (0, import_obsidian.setIcon)(minusBtn, "minus");
+      minusBtn.title = "Decrease Font Size";
       minusBtn.onclick = () => this.adjustFontSize(-1);
     }
     if (this.settings.showIncrementBtn) {
       const plusBtn = this.statusBarItem.createEl("button", { cls: "easy-view-btn" });
       (0, import_obsidian.setIcon)(plusBtn, "plus");
+      plusBtn.title = "Increase Font Size";
       plusBtn.onclick = () => this.adjustFontSize(1);
     }
     if (this.settings.showResetBtn) {
@@ -202,11 +340,29 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
       widthBtn.title = "Toggle Line Width";
       widthBtn.onclick = () => this.toggleLineWidth();
     }
+    if (this.settings.showLineHeightBtn) {
+      const lineHeightBtn = this.statusBarItem.createEl("button", { cls: "easy-view-btn" });
+      (0, import_obsidian.setIcon)(lineHeightBtn, "align-justify");
+      lineHeightBtn.title = "Cycle Line Height";
+      lineHeightBtn.onclick = () => this.cycleLineHeight();
+    }
+    if (this.settings.showReadingModeBtn) {
+      const readingBtn = this.statusBarItem.createEl("button", { cls: "easy-view-btn" });
+      (0, import_obsidian.setIcon)(readingBtn, "book-open");
+      readingBtn.title = "Cycle Reading Mode";
+      readingBtn.onclick = () => this.cycleReadingMode();
+    }
     if (this.settings.showFocusBtn) {
       const focusBtn = this.statusBarItem.createEl("button", { cls: "easy-view-btn" });
       (0, import_obsidian.setIcon)(focusBtn, "maximize");
       focusBtn.title = "Toggle Focus Mode";
       focusBtn.onclick = () => this.toggleFocusMode();
+    }
+    if (this.settings.showZenBtn) {
+      const zenBtn = this.statusBarItem.createEl("button", { cls: "easy-view-btn" });
+      (0, import_obsidian.setIcon)(zenBtn, "eye-off");
+      zenBtn.title = "Toggle Zen Mode";
+      zenBtn.onclick = () => this.toggleZenMode();
     }
     if (this.settings.showFontBtn) {
       const fontBtn = this.statusBarItem.createEl("button", { cls: "easy-view-btn" });
@@ -229,6 +385,52 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
       this.themeBtn = null;
     }
   }
+  /**
+   * Show context menu with all options
+   */
+  showContextMenu(e) {
+    const menu = new import_obsidian.Menu();
+    menu.addItem((item) => item.setTitle(this.settings.focusModeActive ? "\u2713 Focus Mode" : "Focus Mode").setIcon("maximize").onClick(() => this.toggleFocusMode()));
+    menu.addItem((item) => item.setTitle(this.settings.zenModeActive ? "\u2713 Zen Mode" : "Zen Mode").setIcon("eye-off").onClick(() => this.toggleZenMode()));
+    menu.addItem((item) => item.setTitle(this.settings.lineWidthExpanded ? "\u2713 Full Width" : "Full Width").setIcon("arrow-left-right").onClick(() => this.toggleLineWidth()));
+    menu.addSeparator();
+    menu.addItem((item) => item.setTitle("Font Presets").setIcon("type").onClick(() => {
+    }));
+    for (let i = 0; i <= 3; i++) {
+      const label = i === 0 ? "Default" : this.getPresetName("font", i);
+      const isActive = this.settings.activeFontPreset === i;
+      menu.addItem((item) => item.setTitle(`${isActive ? "\u2713 " : "   "}${label}`).onClick(() => this.selectFontPreset(i)));
+    }
+    menu.addSeparator();
+    menu.addItem((item) => item.setTitle("Color Presets").setIcon("palette").onClick(() => {
+    }));
+    for (let i = 0; i <= 3; i++) {
+      const label = i === 0 ? "Default" : this.getPresetName("color", i);
+      const isActive = this.settings.activeColorPreset === i;
+      menu.addItem((item) => item.setTitle(`${isActive ? "\u2713 " : "   "}${label}`).onClick(() => this.selectColorPreset(i)));
+    }
+    menu.addSeparator();
+    menu.addItem((item) => item.setTitle("Line Height").setIcon("align-justify").onClick(() => {
+    }));
+    LINE_HEIGHT_LABELS.forEach((label, i) => {
+      const isActive = this.settings.activeLineHeightIndex === i;
+      menu.addItem((item) => item.setTitle(`${isActive ? "\u2713 " : "   "}${label}`).onClick(() => {
+        this.settings.activeLineHeightIndex = i;
+        this.applyLineHeight(i);
+        this.saveSettings();
+      }));
+    });
+    menu.addSeparator();
+    menu.addItem((item) => item.setTitle("Reading Mode").setIcon("book-open").onClick(() => this.cycleReadingMode()));
+    menu.addItem((item) => item.setTitle("Toggle Theme").setIcon("sun").onClick(() => this.toggleTheme()));
+    menu.showAtMouseEvent(e);
+  }
+  /**
+   * Get preset name
+   */
+  getPresetName(type, n) {
+    return this.settings[`${type}Preset${n}Name`] || `Preset ${n}`;
+  }
   adjustFontSize(change) {
     const currentSize = this.app.vault.getConfig("baseFontSize") || 16;
     let newSize = currentSize + change;
@@ -236,10 +438,12 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     if (newSize > 30) newSize = 30;
     this.app.vault.setConfig("baseFontSize", newSize);
     this.app.updateFontSize();
+    this.notify(`Font Size: ${newSize}px`);
   }
   resetFontSize() {
     this.app.vault.setConfig("baseFontSize", this.settings.defaultFontSize);
     this.app.updateFontSize();
+    this.notify(`Font Size: ${this.settings.defaultFontSize}px (Reset)`);
   }
   toggleTheme() {
     const currentTheme = this.app.vault.getConfig("theme");
@@ -247,6 +451,7 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     this.app.vault.setConfig("theme", newTheme);
     this.app.updateTheme();
     this.updateThemeIcon();
+    this.notify(newTheme === "obsidian" ? "Theme: Dark" : "Theme: Light");
   }
   updateThemeIcon() {
     if (!this.themeBtn) return;
@@ -255,57 +460,244 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     (0, import_obsidian.setIcon)(this.themeBtn, isDark ? "moon" : "sun");
   }
   toggleLineWidth() {
-    document.body.classList.toggle("easyview-force-width");
+    const isExpanded = document.body.classList.toggle("easyview-force-width");
+    this.settings.lineWidthExpanded = isExpanded;
+    this.saveSettings();
+    this.notify(isExpanded ? "Line Width: Full" : "Line Width: Standard");
   }
   toggleFocusMode() {
-    document.body.classList.toggle("easyview-focus-mode");
+    if (!this.settings.focusModeActive && this.settings.zenModeActive) {
+      document.body.classList.remove("easyview-zen-mode");
+      this.settings.zenModeActive = false;
+    }
+    const isActive = document.body.classList.toggle("easyview-focus-mode");
+    this.settings.focusModeActive = isActive;
+    this.saveSettings();
+    this.notify(isActive ? "Focus Mode: ON" : "Focus Mode: OFF");
+  }
+  toggleZenMode() {
+    if (!this.settings.zenModeActive && this.settings.focusModeActive) {
+      document.body.classList.remove("easyview-focus-mode");
+      this.settings.focusModeActive = false;
+    }
+    const isActive = document.body.classList.toggle("easyview-zen-mode");
+    this.settings.zenModeActive = isActive;
+    this.saveSettings();
+    this.notify(isActive ? "Zen Mode: ON" : "Zen Mode: OFF");
   }
   cycleFont() {
-    this.fontState = (this.fontState + 1) % 4;
-    if (this.fontState === 0) {
+    this.settings.activeFontPreset = (this.settings.activeFontPreset + 1) % 4;
+    if (this.settings.activeFontPreset === 0) {
       this.clearFontOverrides();
+      this.notify("Fonts: Default");
     } else {
-      const n = this.fontState;
+      const n = this.settings.activeFontPreset;
       const body = this.settings[`fontPreset${n}Body`];
       const ui = this.settings[`fontPreset${n}UI`];
       const mono = this.settings[`fontPreset${n}Mono`];
       this.applyFont(body, ui, mono);
+      this.notify(`Fonts: ${this.getPresetName("font", n)}`);
+    }
+    this.saveSettings();
+  }
+  selectFontPreset(n) {
+    this.settings.activeFontPreset = n;
+    if (n === 0) {
+      this.clearFontOverrides();
+      this.notify("Fonts: Default");
+    } else {
+      const body = this.settings[`fontPreset${n}Body`];
+      const ui = this.settings[`fontPreset${n}UI`];
+      const mono = this.settings[`fontPreset${n}Mono`];
+      this.applyFont(body, ui, mono);
+      this.notify(`Fonts: ${this.getPresetName("font", n)}`);
+    }
+    this.saveSettings();
+  }
+  /**
+   * Get the Style Settings plugin instance if available
+   */
+  getStyleSettings() {
+    var _a, _b, _c;
+    return (_c = (_b = (_a = this.app.plugins) == null ? void 0 : _a.plugins) == null ? void 0 : _b["obsidian-style-settings"]) != null ? _c : null;
+  }
+  /**
+   * Update Style Settings with font values for persistence
+   */
+  syncFontToStyleSettings(body, ui, mono) {
+    const styleSettings = this.getStyleSettings();
+    if (styleSettings == null ? void 0 : styleSettings.settingsManager) {
+      try {
+        styleSettings.settingsManager.setSetting(STYLE_SETTINGS_SECTION_ID, "font-text-override", body);
+        styleSettings.settingsManager.setSetting(STYLE_SETTINGS_SECTION_ID, "font-ui-override", ui);
+        styleSettings.settingsManager.setSetting(STYLE_SETTINGS_SECTION_ID, "font-monospace-override", mono);
+        console.debug("EasyView: Synced fonts to Style Settings");
+      } catch (e) {
+        console.warn("EasyView: Failed to sync fonts to Style Settings", e);
+      }
     }
   }
-  applyFont(body, ui, mono) {
+  /**
+   * Clear font values from Style Settings (reset to theme defaults)
+   */
+  clearFontFromStyleSettings() {
+    const styleSettings = this.getStyleSettings();
+    if (styleSettings == null ? void 0 : styleSettings.settingsManager) {
+      try {
+        styleSettings.settingsManager.clearSetting(STYLE_SETTINGS_SECTION_ID, "font-text-override");
+        styleSettings.settingsManager.clearSetting(STYLE_SETTINGS_SECTION_ID, "font-ui-override");
+        styleSettings.settingsManager.clearSetting(STYLE_SETTINGS_SECTION_ID, "font-monospace-override");
+        console.debug("EasyView: Cleared fonts from Style Settings");
+      } catch (e) {
+        console.warn("EasyView: Failed to clear fonts from Style Settings", e);
+      }
+    }
+  }
+  applyFont(body, ui, mono, showNotice = true) {
     document.body.style.setProperty("--font-text-override", body);
     document.body.style.setProperty("--font-ui-override", ui);
     document.body.style.setProperty("--font-monospace-override", mono);
+    this.syncFontToStyleSettings(body, ui, mono);
   }
   clearFontOverrides() {
     document.body.style.removeProperty("--font-text-override");
     document.body.style.removeProperty("--font-ui-override");
     document.body.style.removeProperty("--font-monospace-override");
+    this.clearFontFromStyleSettings();
   }
   cycleColor() {
-    this.colorState = (this.colorState + 1) % 4;
-    if (this.colorState === 0) {
+    this.settings.activeColorPreset = (this.settings.activeColorPreset + 1) % 4;
+    if (this.settings.activeColorPreset === 0) {
       this.clearColorOverrides();
+      this.notify("Colors: Default");
     } else {
-      const n = this.colorState;
+      const n = this.settings.activeColorPreset;
       const lightUI = this.settings[`colorPreset${n}LightUI`];
       const lightBody = this.settings[`colorPreset${n}LightBody`];
       const darkUI = this.settings[`colorPreset${n}DarkUI`];
       const darkBody = this.settings[`colorPreset${n}DarkBody`];
       this.applyColor(lightUI, lightBody, darkUI, darkBody);
+      this.notify(`Colors: ${this.getPresetName("color", n)}`);
+    }
+    this.saveSettings();
+  }
+  selectColorPreset(n) {
+    this.settings.activeColorPreset = n;
+    if (n === 0) {
+      this.clearColorOverrides();
+      this.notify("Colors: Default");
+    } else {
+      const lightUI = this.settings[`colorPreset${n}LightUI`];
+      const lightBody = this.settings[`colorPreset${n}LightBody`];
+      const darkUI = this.settings[`colorPreset${n}DarkUI`];
+      const darkBody = this.settings[`colorPreset${n}DarkBody`];
+      this.applyColor(lightUI, lightBody, darkUI, darkBody);
+      this.notify(`Colors: ${this.getPresetName("color", n)}`);
+    }
+    this.saveSettings();
+  }
+  /**
+   * Update Style Settings with color values for persistence
+   */
+  syncColorToStyleSettings(lightUI, lightBody, darkUI, darkBody) {
+    const styleSettings = this.getStyleSettings();
+    if (styleSettings == null ? void 0 : styleSettings.settingsManager) {
+      try {
+        styleSettings.settingsManager.setSetting(STYLE_SETTINGS_SECTION_ID, "ui-font-color-light", lightUI);
+        styleSettings.settingsManager.setSetting(STYLE_SETTINGS_SECTION_ID, "body-font-color-light", lightBody);
+        styleSettings.settingsManager.setSetting(STYLE_SETTINGS_SECTION_ID, "ui-font-color-dark", darkUI);
+        styleSettings.settingsManager.setSetting(STYLE_SETTINGS_SECTION_ID, "body-font-color-dark", darkBody);
+        console.debug("EasyView: Synced colors to Style Settings");
+      } catch (e) {
+        console.warn("EasyView: Failed to sync colors to Style Settings", e);
+      }
     }
   }
-  applyColor(lightUI, lightBody, darkUI, darkBody) {
+  /**
+   * Clear color values from Style Settings (reset to theme defaults)
+   */
+  clearColorFromStyleSettings() {
+    const styleSettings = this.getStyleSettings();
+    if (styleSettings == null ? void 0 : styleSettings.settingsManager) {
+      try {
+        styleSettings.settingsManager.clearSetting(STYLE_SETTINGS_SECTION_ID, "ui-font-color-light");
+        styleSettings.settingsManager.clearSetting(STYLE_SETTINGS_SECTION_ID, "body-font-color-light");
+        styleSettings.settingsManager.clearSetting(STYLE_SETTINGS_SECTION_ID, "ui-font-color-dark");
+        styleSettings.settingsManager.clearSetting(STYLE_SETTINGS_SECTION_ID, "body-font-color-dark");
+        console.debug("EasyView: Cleared colors from Style Settings");
+      } catch (e) {
+        console.warn("EasyView: Failed to clear colors from Style Settings", e);
+      }
+    }
+  }
+  applyColor(lightUI, lightBody, darkUI, darkBody, showNotice = true) {
     document.body.style.setProperty("--ui-font-color-light", lightUI);
     document.body.style.setProperty("--body-font-color-light", lightBody);
     document.body.style.setProperty("--ui-font-color-dark", darkUI);
     document.body.style.setProperty("--body-font-color-dark", darkBody);
+    this.syncColorToStyleSettings(lightUI, lightBody, darkUI, darkBody);
   }
   clearColorOverrides() {
     document.body.style.removeProperty("--ui-font-color-light");
     document.body.style.removeProperty("--body-font-color-light");
     document.body.style.removeProperty("--ui-font-color-dark");
     document.body.style.removeProperty("--body-font-color-dark");
+    this.clearColorFromStyleSettings();
+  }
+  /**
+   * Cycle through line height values
+   */
+  cycleLineHeight() {
+    this.settings.activeLineHeightIndex = (this.settings.activeLineHeightIndex + 1) % LINE_HEIGHTS.length;
+    this.applyLineHeight(this.settings.activeLineHeightIndex);
+    this.saveSettings();
+  }
+  applyLineHeight(index, showNotice = true) {
+    const lineHeight = LINE_HEIGHTS[index];
+    document.body.style.setProperty("--line-height-custom", lineHeight.toString());
+    const styleSettings = this.getStyleSettings();
+    if (styleSettings == null ? void 0 : styleSettings.settingsManager) {
+      try {
+        styleSettings.settingsManager.setSetting(STYLE_SETTINGS_SECTION_ID, "line-height-custom", lineHeight);
+      } catch (e) {
+      }
+    }
+    if (showNotice) {
+      this.notify(`Line Height: ${LINE_HEIGHT_LABELS[index]}`);
+    }
+  }
+  clearLineHeightOverride() {
+    document.body.style.removeProperty("--line-height-custom");
+  }
+  /**
+   * Cycle through reading modes
+   */
+  cycleReadingMode() {
+    var _a;
+    const view = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
+    if (!view) {
+      this.notify("No active markdown view");
+      return;
+    }
+    const state = view.getState();
+    const currentMode = state.mode || "source";
+    const currentSource = (_a = state.source) != null ? _a : true;
+    let newMode;
+    let newSource;
+    if (currentMode === "source" && currentSource) {
+      newMode = "source";
+      newSource = false;
+      this.notify("Mode: Live Preview");
+    } else if (currentMode === "source" && !currentSource) {
+      newMode = "preview";
+      newSource = false;
+      this.notify("Mode: Reading View");
+    } else {
+      newMode = "source";
+      newSource = true;
+      this.notify("Mode: Source");
+    }
+    view.setState({ ...state, mode: newMode, source: newSource }, { history: false });
   }
 };
 var EasyViewSettingTab = class extends import_obsidian.PluginSettingTab {
@@ -327,6 +719,10 @@ var EasyViewSettingTab = class extends import_obsidian.PluginSettingTab {
         this.plugin.settings.defaultFontSize = n;
         await this.plugin.saveSettings();
       }
+    }));
+    new import_obsidian.Setting(containerEl).setName("Show Notifications").setDesc("Show brief notifications when actions are performed").addToggle((t) => t.setValue(this.plugin.settings.showNotifications).onChange(async (v) => {
+      this.plugin.settings.showNotifications = v;
+      await this.plugin.saveSettings();
     }));
     containerEl.createEl("h3", { text: "Button Visibility" });
     new import_obsidian.Setting(containerEl).setName("Show Decrement (-)").addToggle((t) => t.setValue(this.plugin.settings.showDecrementBtn).onChange(async (v) => {
@@ -350,8 +746,20 @@ var EasyViewSettingTab = class extends import_obsidian.PluginSettingTab {
       this.plugin.settings.showLineWidthBtn = v;
       await this.plugin.saveSettings();
     }));
+    new import_obsidian.Setting(containerEl).setName("Show Line Height").addToggle((t) => t.setValue(this.plugin.settings.showLineHeightBtn).onChange(async (v) => {
+      this.plugin.settings.showLineHeightBtn = v;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian.Setting(containerEl).setName("Show Reading Mode").addToggle((t) => t.setValue(this.plugin.settings.showReadingModeBtn).onChange(async (v) => {
+      this.plugin.settings.showReadingModeBtn = v;
+      await this.plugin.saveSettings();
+    }));
     new import_obsidian.Setting(containerEl).setName("Show Focus Mode (\u25CE)").addToggle((t) => t.setValue(this.plugin.settings.showFocusBtn).onChange(async (v) => {
       this.plugin.settings.showFocusBtn = v;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian.Setting(containerEl).setName("Show Zen Mode").setDesc("Ultra focus - hides everything except content").addToggle((t) => t.setValue(this.plugin.settings.showZenBtn).onChange(async (v) => {
+      this.plugin.settings.showZenBtn = v;
       await this.plugin.saveSettings();
     }));
     new import_obsidian.Setting(containerEl).setName("Show Font Switcher (Aa)").addToggle((t) => t.setValue(this.plugin.settings.showFontBtn).onChange(async (v) => {
@@ -370,9 +778,15 @@ var EasyViewSettingTab = class extends import_obsidian.PluginSettingTab {
     this.addColorPreset(containerEl, 1);
     this.addColorPreset(containerEl, 2);
     this.addColorPreset(containerEl, 3);
+    containerEl.createEl("h3", { text: "Keyboard Shortcuts" });
+    containerEl.createEl("p", { text: 'All features are available via the Command Palette (Cmd/Ctrl+P). Search for "EasyView" to find all commands. You can assign custom hotkeys in Settings \u2192 Hotkeys.' });
   }
   addFontPreset(container, n) {
     container.createEl("h4", { text: `Preset ${n}` });
+    new import_obsidian.Setting(container).setName("Preset Name").addText((t) => t.setValue(this.plugin.settings[`fontPreset${n}Name`]).setPlaceholder(`Preset ${n}`).onChange(async (v) => {
+      this.plugin.settings[`fontPreset${n}Name`] = v || `Preset ${n}`;
+      await this.plugin.saveSettings();
+    }));
     new import_obsidian.Setting(container).setName("Body Font").addDropdown((d) => d.addOptions(BODY_FONTS).setValue(this.plugin.settings[`fontPreset${n}Body`]).onChange(async (v) => {
       this.plugin.settings[`fontPreset${n}Body`] = v;
       await this.plugin.saveSettings();
@@ -388,6 +802,10 @@ var EasyViewSettingTab = class extends import_obsidian.PluginSettingTab {
   }
   addColorPreset(container, n) {
     container.createEl("h4", { text: `Preset ${n}` });
+    new import_obsidian.Setting(container).setName("Preset Name").addText((t) => t.setValue(this.plugin.settings[`colorPreset${n}Name`]).setPlaceholder(`Preset ${n}`).onChange(async (v) => {
+      this.plugin.settings[`colorPreset${n}Name`] = v || `Preset ${n}`;
+      await this.plugin.saveSettings();
+    }));
     new import_obsidian.Setting(container).setName("Light Mode: UI Color").addDropdown((d) => d.addOptions(LIGHT_UI_COLORS).setValue(this.plugin.settings[`colorPreset${n}LightUI`]).onChange(async (v) => {
       this.plugin.settings[`colorPreset${n}LightUI`] = v;
       await this.plugin.saveSettings();
