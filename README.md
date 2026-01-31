@@ -5,8 +5,6 @@ readme_content = """
 
 **Easy View** is a powerful status bar utility for Obsidian that provides instant control over your reading and writing environment. Adjust font sizes, toggle themes, switch between focus modes, cycle through font and colour presets, and manage your layout—all from the status bar or via keyboard shortcuts.
 
-<img width="389" height="679" alt="buttons" src="https://github.com/user-attachments/assets/624d44db-984d-4295-9fe9-3a499f38a0d1" />
-
 ---
 
 ## Table of Contents
