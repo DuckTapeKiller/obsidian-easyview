@@ -1,4 +1,3 @@
-readme_content = """
 ![Easy View Art](https://github.com/user-attachments/assets/d2f98788-73ed-44b0-8488-5fa75f4cf914)
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/ducktapekiller)
@@ -389,6 +388,3 @@ If you find Easy View useful, consider supporting development:
 ## Licence
 
 MIT Licence - See [LICENSE.md](LICENSE.md) for details.
-"""
-
-print(readme_content)
