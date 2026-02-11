@@ -13,7 +13,9 @@ const BODY_FONTS: Record<string, string> = {
     "'Libre Caslon Text', serif": "Libre Caslon Text (Serif)",
     "'Spectral', serif": "Spectral (Serif)",
     "'Noto Sans Mono', monospace": "Noto Sans Mono (Mono Sans)",
-    "'iA Writer Mono S', monospace": "iA Writer Mono S (Mono Sans)"
+    "'iA Writer Mono S', monospace": "iA Writer Mono S (Mono Sans)",
+    "'Azeret Mono', monospace": "Azeret Mono (Mono Sans)",
+    "'Space Mono', monospace": "Space Mono (Mono Sans)"
 };
 
 const UI_FONTS: Record<string, string> = {
@@ -28,12 +30,16 @@ const UI_FONTS: Record<string, string> = {
     "'Libre Caslon Text', serif": "Libre Caslon Text (Serif)",
     "'Spectral', serif": "Spectral (Serif)",
     "'Noto Sans Mono', monospace": "Noto Sans Mono (Mono Sans)",
-    "'iA Writer Mono S', monospace": "iA Writer Mono S (Mono Sans)"
+    "'iA Writer Mono S', monospace": "iA Writer Mono S (Mono Sans)",
+    "'Azeret Mono', monospace": "Azeret Mono (Mono Sans)",
+    "'Space Mono', monospace": "Space Mono (Mono Sans)"
 };
 
 const MONO_FONTS: Record<string, string> = {
     "'Noto Sans Mono', monospace": "Noto Sans Mono (Default)",
-    "'iA Writer Mono S', monospace": "iA Writer Mono S (Mono Sans)"
+    "'iA Writer Mono S', monospace": "iA Writer Mono S (Mono Sans)",
+    "'Azeret Mono', monospace": "Azeret Mono (Mono Sans)",
+    "'Space Mono, monospace": "Space Mono (Mono Sans)"
 };
 
 const LIGHT_UI_COLORS: Record<string, string> = {
@@ -93,6 +99,24 @@ const LINE_HEIGHT_LABELS = ['Compact (1.4)', 'Normal (1.5)', 'Relaxed (1.6)', 'S
 // Reading Mode Options
 const READING_MODES = ['source', 'live', 'preview'] as const;
 const READING_MODE_LABELS = ['Source Mode', 'Live Preview', 'Reading View'];
+
+// Aubade Theme Color Scheme Presets
+const AUBADE_PRESETS: Record<string, string> = {
+    'preset-default': 'Default (Gunmetal/Ice)',
+    'preset-warm': 'Warm (Amber/Cream)',
+    'preset-cool': 'Cool (Teal/Slate)',
+    'preset-mono': 'Monochrome (Pure B&W)',
+    'preset-ocean': 'Ocean (Deep Blue)',
+    'preset-forest': 'Forest (Earthy Green)',
+    'preset-lavender': 'Lavender (Soft Purple)',
+    'preset-sunset': 'Sunset (Orange/Pink)',
+    'preset-midnight': 'Midnight (Dark Navy)',
+    'preset-solarized': 'Solarized (Classic)',
+    'preset-stones': 'Stones (Sober)',
+    'preset-reader': 'Reader (Newspaper)',
+    'preset-amber': 'Amber (IBM Terminal)',
+    'preset-brutalist': 'Brutalist (Low Fidelity)'
+};
 
 interface EasyViewSettings {
     buttonSize: number;
@@ -155,6 +179,13 @@ interface EasyViewSettings {
     colorPreset3LightBody: string;
     colorPreset3DarkUI: string;
     colorPreset3DarkBody: string;
+
+    // Aubade Color Scheme Presets
+    showAubadePresetBtn: boolean;
+    aubadePreset1: string;
+    aubadePreset2: string;
+    aubadePreset3: string;
+    activeAubadePreset: number; // 0=none, 1-3
 }
 
 const DEFAULT_SETTINGS: EasyViewSettings = {
@@ -219,12 +250,20 @@ const DEFAULT_SETTINGS: EasyViewSettings = {
     colorPreset3LightBody: '#000000',
     colorPreset3DarkUI: '#ffffff',
     colorPreset3DarkBody: '#ffffff',
+
+    // Aubade Presets Defaults
+    showAubadePresetBtn: false,
+    aubadePreset1: 'preset-warm',
+    aubadePreset2: 'preset-ocean',
+    aubadePreset3: 'preset-midnight',
+    activeAubadePreset: 0,
 }
 
 export default class EasyViewPlugin extends Plugin {
     settings: EasyViewSettings;
     statusBarItem: HTMLElement | null = null;
     themeBtn: HTMLElement | null = null;
+    isReady: boolean = false; // Prevents actions during startup
 
     async onload() {
         console.debug('Loading EasyView plugin');
@@ -238,9 +277,49 @@ export default class EasyViewPlugin extends Plugin {
         this.restoreStates();
 
         this.refreshStatusBar();
+        let wasBrutalist = this.isBrutalistTheme(); // Track theme state
         this.registerEvent(this.app.workspace.on('css-change', () => {
             this.updateThemeIcon();
+
+            if (!this.isReady) return;
+
+            const isBrutalist = this.isBrutalistTheme();
+
+            // Switching away from Brutalist: clear font overrides (but keep setting saved)
+            if (wasBrutalist && !isBrutalist && this.settings.activeFontPreset > 0) {
+                this.clearFontOverrides();
+            }
+
+            // Switching back to Brutalist: re-apply saved font preset
+            if (!wasBrutalist && isBrutalist && this.settings.activeFontPreset > 0) {
+                const n = this.settings.activeFontPreset as 1 | 2 | 3;
+                // @ts-ignore
+                const body = this.settings[`fontPreset${n}Body`];
+                // @ts-ignore
+                const ui = this.settings[`fontPreset${n}UI`];
+                // @ts-ignore
+                const mono = this.settings[`fontPreset${n}Mono`];
+                this.applyFontInternal(body, ui, mono);
+            }
+
+            wasBrutalist = isBrutalist;
+
+            // Aubade Theme Logic: Re-apply preset on theme mode switch (Light/Dark)
+            if (this.isAubadeTheme() && this.settings.activeAubadePreset > 0) {
+                const presetKey = this.settings.activeAubadePreset === 1
+                    ? this.settings.aubadePreset1
+                    : this.settings.activeAubadePreset === 2
+                        ? this.settings.aubadePreset2
+                        : this.settings.aubadePreset3;
+                // Wait slightly for theme switch to complete
+                setTimeout(() => {
+                    this.applyAubadePreset(presetKey);
+                }, 100);
+            }
         }));
+
+        // Mark ready after a short delay to avoid startup race conditions
+        setTimeout(() => { this.isReady = true; }, 1000);
     }
 
     onunload() {
@@ -249,7 +328,9 @@ export default class EasyViewPlugin extends Plugin {
         document.body.classList.remove('easyview-force-width');
         document.body.classList.remove('easyview-focus-mode');
         document.body.classList.remove('easyview-zen-mode');
+        document.body.classList.remove('easyview-zen-mode');
         this.clearFontOverrides();
+        this.clearAubadePresetClasses();
         this.clearColorOverrides();
         this.clearLineHeightOverride();
     }
@@ -364,6 +445,13 @@ export default class EasyViewPlugin extends Plugin {
                 callback: () => this.selectColorPreset(i)
             });
         }
+
+        // Aubade Color Scheme Preset
+        this.addCommand({
+            id: 'cycle-aubade-preset',
+            name: 'Cycle Aubade Color Scheme',
+            callback: () => this.cycleAubadePreset()
+        });
     }
 
     /**
@@ -385,8 +473,8 @@ export default class EasyViewPlugin extends Plugin {
             document.body.classList.add('easyview-force-width');
         }
 
-        // Restore Font Preset
-        if (this.settings.activeFontPreset > 0) {
+        // Restore Font Preset (only if Brutalist theme is active)
+        if (this.settings.activeFontPreset > 0 && this.isBrutalistTheme()) {
             const n = this.settings.activeFontPreset as 1 | 2 | 3;
             // @ts-ignore
             const body = this.settings[`fontPreset${n}Body`];
@@ -394,7 +482,7 @@ export default class EasyViewPlugin extends Plugin {
             const ui = this.settings[`fontPreset${n}UI`];
             // @ts-ignore
             const mono = this.settings[`fontPreset${n}Mono`];
-            this.applyFont(body, ui, mono, false); // Don't notify on restore
+            this.applyFontInternal(body, ui, mono); // Don't notify on restore
         }
 
         // Restore Color Preset
@@ -413,6 +501,16 @@ export default class EasyViewPlugin extends Plugin {
 
         // Restore Line Height
         this.applyLineHeight(this.settings.activeLineHeightIndex, false);
+
+        // Restore Aubade Preset (only if Aubade theme is active)
+        if (this.settings.activeAubadePreset > 0 && this.isAubadeTheme()) {
+            const presetKey = this.settings.activeAubadePreset === 1
+                ? this.settings.aubadePreset1
+                : this.settings.activeAubadePreset === 2
+                    ? this.settings.aubadePreset2
+                    : this.settings.aubadePreset3;
+            this.applyAubadePreset(presetKey);
+        }
     }
 
     refreshStatusBar() {
@@ -497,6 +595,14 @@ export default class EasyViewPlugin extends Plugin {
             setIcon(colorBtn, 'palette');
             colorBtn.title = "Cycle Font Color";
             colorBtn.onclick = () => this.cycleColor();
+        }
+
+        // Only show if Aubade theme is active and enabled in settings
+        if (this.settings.showAubadePresetBtn && this.isAubadeTheme()) {
+            const aubadeBtn = this.statusBarItem.createEl('button', { cls: 'easy-view-btn' });
+            setIcon(aubadeBtn, 'paint-bucket');
+            aubadeBtn.title = "Cycle Aubade Color Scheme";
+            aubadeBtn.onclick = () => this.cycleAubadePreset();
         }
 
         if (this.settings.showThemeBtn) {
@@ -716,6 +822,78 @@ export default class EasyViewPlugin extends Plugin {
     }
 
     /**
+     * Check if Brutalist theme is currently active
+     */
+    isBrutalistTheme(): boolean {
+        // @ts-ignore - accessing internal config
+        const cssTheme = this.app.vault.getConfig('cssTheme');
+        return cssTheme?.toLowerCase().includes('brutalist') ?? false;
+    }
+
+    /**
+     * Check if Aubade theme is currently active
+     */
+    isAubadeTheme(): boolean {
+        // @ts-ignore - accessing internal config
+        const cssTheme = this.app.vault.getConfig('cssTheme');
+        return cssTheme?.toLowerCase().includes('aubade') ?? false;
+    }
+
+    /**
+     * Cycle through Aubade color scheme presets
+     */
+    cycleAubadePreset() {
+        if (!this.isAubadeTheme()) {
+            this.notify('Color schemes only apply to Aubade theme');
+            return;
+        }
+
+        this.settings.activeAubadePreset = (this.settings.activeAubadePreset + 1) % 4;
+        if (this.settings.activeAubadePreset === 0) {
+            this.clearAubadePreset();
+            this.notify('Color Scheme: Default');
+        } else {
+            const presetKey = this.settings.activeAubadePreset === 1
+                ? this.settings.aubadePreset1
+                : this.settings.activeAubadePreset === 2
+                    ? this.settings.aubadePreset2
+                    : this.settings.aubadePreset3;
+            this.applyAubadePreset(presetKey);
+            this.notify(`Color Scheme: ${AUBADE_PRESETS[presetKey] || presetKey}`);
+        }
+        this.saveSettings();
+    }
+
+    /**
+     * Apply an Aubade color scheme preset
+     */
+    applyAubadePreset(presetClass: string) {
+        // Remove all preset classes first
+        this.clearAubadePresetClasses();
+        // Add the selected preset class
+        if (presetClass && presetClass !== 'preset-default') {
+            document.body.classList.add(presetClass);
+        }
+    }
+
+    /**
+     * Clear all Aubade preset classes from body
+     */
+    clearAubadePresetClasses() {
+        Object.keys(AUBADE_PRESETS).forEach(presetClass => {
+            document.body.classList.remove(presetClass);
+        });
+    }
+
+    /**
+     * Clear Aubade preset (reset to default)
+     */
+    clearAubadePreset() {
+        this.clearAubadePresetClasses();
+        this.settings.activeAubadePreset = 0;
+    }
+
+    /**
      * Get the Style Settings plugin instance if available
      */
     getStyleSettings(): any | null {
@@ -758,6 +936,20 @@ export default class EasyViewPlugin extends Plugin {
     }
 
     applyFont(body: string, ui: string, mono: string, showNotice: boolean = true) {
+        // Only apply font presets when Brutalist theme is active
+        if (!this.isBrutalistTheme()) {
+            if (showNotice) {
+                this.notify('Font presets only apply to Brutalist theme');
+            }
+            return;
+        }
+        this.applyFontInternal(body, ui, mono);
+    }
+
+    /**
+     * Internal method to apply fonts without theme check (used by restoreStates)
+     */
+    applyFontInternal(body: string, ui: string, mono: string) {
         // Apply immediately via inline styles for instant feedback
         document.body.style.setProperty('--font-text-override', body);
         document.body.style.setProperty('--font-ui-override', ui);
@@ -977,6 +1169,59 @@ class EasyViewSettingTab extends PluginSettingTab {
         new Setting(containerEl).setName('Show Reading Mode').addToggle(t => t.setValue(this.plugin.settings.showReadingModeBtn).onChange(async v => { this.plugin.settings.showReadingModeBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show Focus Mode (◎)').addToggle(t => t.setValue(this.plugin.settings.showFocusBtn).onChange(async v => { this.plugin.settings.showFocusBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show Zen Mode').setDesc('Ultra focus - hides everything except content').addToggle(t => t.setValue(this.plugin.settings.showZenBtn).onChange(async v => { this.plugin.settings.showZenBtn = v; await this.plugin.saveSettings(); }));
+
+        // --- Aubade Color Scheme ---
+        containerEl.createEl('h3', { text: 'Aubade Color Scheme' });
+        new Setting(containerEl)
+            .setName('Show Color Scheme Button (Paint Bucket)')
+            .setDesc('Only visible when Aubade theme is active')
+            .addToggle(t => t.setValue(this.plugin.settings.showAubadePresetBtn)
+                .onChange(async v => {
+                    this.plugin.settings.showAubadePresetBtn = v;
+                    await this.plugin.saveSettings();
+                    this.plugin.refreshStatusBar();
+                }));
+
+        const presetOptions = AUBADE_PRESETS;
+
+        new Setting(containerEl)
+            .setName('Slot 1 Preset')
+            .addDropdown(d => {
+                Object.keys(presetOptions).forEach(key => {
+                    d.addOption(key, presetOptions[key]);
+                });
+                d.setValue(this.plugin.settings.aubadePreset1);
+                d.onChange(async v => {
+                    this.plugin.settings.aubadePreset1 = v;
+                    await this.plugin.saveSettings();
+                });
+            });
+
+        new Setting(containerEl)
+            .setName('Slot 2 Preset')
+            .addDropdown(d => {
+                Object.keys(presetOptions).forEach(key => {
+                    d.addOption(key, presetOptions[key]);
+                });
+                d.setValue(this.plugin.settings.aubadePreset2);
+                d.onChange(async v => {
+                    this.plugin.settings.aubadePreset2 = v;
+                    await this.plugin.saveSettings();
+                });
+            });
+
+        new Setting(containerEl)
+            .setName('Slot 3 Preset')
+            .addDropdown(d => {
+                Object.keys(presetOptions).forEach(key => {
+                    d.addOption(key, presetOptions[key]);
+                });
+                d.setValue(this.plugin.settings.aubadePreset3);
+                d.onChange(async v => {
+                    this.plugin.settings.aubadePreset3 = v;
+                    await this.plugin.saveSettings();
+                });
+            });
         new Setting(containerEl).setName('Show Font Switcher (Aa)').addToggle(t => t.setValue(this.plugin.settings.showFontBtn).onChange(async v => { this.plugin.settings.showFontBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show Color Switcher (Palette)').addToggle(t => t.setValue(this.plugin.settings.showColorBtn).onChange(async v => { this.plugin.settings.showColorBtn = v; await this.plugin.saveSettings(); }));
 

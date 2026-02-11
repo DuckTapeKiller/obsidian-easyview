@@ -40,7 +40,8 @@ var BODY_FONTS = {
   "'Libre Caslon Text', serif": "Libre Caslon Text (Serif)",
   "'Spectral', serif": "Spectral (Serif)",
   "'Noto Sans Mono', monospace": "Noto Sans Mono (Mono Sans)",
-  "'iA Writer Mono S', monospace": "iA Writer Mono S (Mono Sans)"
+  "'iA Writer Mono S', monospace": "iA Writer Mono S (Mono Sans)",
+  "'Azeret Mono', monospace": "Azeret Mono (Mono Sans)"
 };
 var UI_FONTS = {
   "'Sen', sans-serif": "Sen (Sans)",
@@ -54,11 +55,13 @@ var UI_FONTS = {
   "'Libre Caslon Text', serif": "Libre Caslon Text (Serif)",
   "'Spectral', serif": "Spectral (Serif)",
   "'Noto Sans Mono', monospace": "Noto Sans Mono (Mono Sans)",
-  "'iA Writer Mono S', monospace": "iA Writer Mono S (Mono Sans)"
+  "'iA Writer Mono S', monospace": "iA Writer Mono S (Mono Sans)",
+  "'Azeret Mono', monospace": "Azeret Mono (Mono Sans)"
 };
 var MONO_FONTS = {
   "'Noto Sans Mono', monospace": "Noto Sans Mono (Default)",
-  "'iA Writer Mono S', monospace": "iA Writer Mono S (Mono Sans)"
+  "'iA Writer Mono S', monospace": "iA Writer Mono S (Mono Sans)",
+  "'Azeret Mono', monospace": "Azeret Mono (Mono Sans)"
 };
 var LIGHT_UI_COLORS = {
   "#505050": "#505050",
@@ -106,6 +109,20 @@ var DARK_BODY_COLORS = {
 var STYLE_SETTINGS_SECTION_ID = "brutalist-theme";
 var LINE_HEIGHTS = [1.4, 1.5, 1.6, 1.8, 2];
 var LINE_HEIGHT_LABELS = ["Compact (1.4)", "Normal (1.5)", "Relaxed (1.6)", "Spacious (1.8)", "Double (2.0)"];
+var AUBADE_PRESETS = {
+  "preset-default": "Default (Gunmetal/Ice)",
+  "preset-warm": "Warm (Amber/Cream)",
+  "preset-cool": "Cool (Teal/Slate)",
+  "preset-mono": "Monochrome (Pure B&W)",
+  "preset-ocean": "Ocean (Deep Blue)",
+  "preset-forest": "Forest (Earthy Green)",
+  "preset-lavender": "Lavender (Soft Purple)",
+  "preset-sunset": "Sunset (Orange/Pink)",
+  "preset-midnight": "Midnight (Dark Navy)",
+  "preset-solarized": "Solarized (Classic)",
+  "preset-reader": "Reader (Newspaper)",
+  "preset-amber": "Amber (IBM Terminal)"
+};
 var DEFAULT_SETTINGS = {
   buttonSize: 13,
   showIncrementBtn: true,
@@ -160,14 +177,22 @@ var DEFAULT_SETTINGS = {
   colorPreset3LightUI: "#000000",
   colorPreset3LightBody: "#000000",
   colorPreset3DarkUI: "#ffffff",
-  colorPreset3DarkBody: "#ffffff"
+  colorPreset3DarkBody: "#ffffff",
+  // Aubade Presets Defaults
+  showAubadePresetBtn: false,
+  aubadePreset1: "preset-warm",
+  aubadePreset2: "preset-ocean",
+  aubadePreset3: "preset-midnight",
+  activeAubadePreset: 0
 };
 var EasyViewPlugin = class extends import_obsidian.Plugin {
   constructor() {
     super(...arguments);
     this.statusBarItem = null;
     this.themeBtn = null;
+    this.isReady = false;
   }
+  // Prevents actions during startup
   async onload() {
     console.debug("Loading EasyView plugin");
     await this.loadSettings();
@@ -175,9 +200,32 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     this.registerCommands();
     this.restoreStates();
     this.refreshStatusBar();
+    let wasBrutalist = this.isBrutalistTheme();
     this.registerEvent(this.app.workspace.on("css-change", () => {
       this.updateThemeIcon();
+      if (!this.isReady) return;
+      const isBrutalist = this.isBrutalistTheme();
+      if (wasBrutalist && !isBrutalist && this.settings.activeFontPreset > 0) {
+        this.clearFontOverrides();
+      }
+      if (!wasBrutalist && isBrutalist && this.settings.activeFontPreset > 0) {
+        const n = this.settings.activeFontPreset;
+        const body = this.settings[`fontPreset${n}Body`];
+        const ui = this.settings[`fontPreset${n}UI`];
+        const mono = this.settings[`fontPreset${n}Mono`];
+        this.applyFontInternal(body, ui, mono);
+      }
+      wasBrutalist = isBrutalist;
+      if (this.isAubadeTheme() && this.settings.activeAubadePreset > 0) {
+        const presetKey = this.settings.activeAubadePreset === 1 ? this.settings.aubadePreset1 : this.settings.activeAubadePreset === 2 ? this.settings.aubadePreset2 : this.settings.aubadePreset3;
+        setTimeout(() => {
+          this.applyAubadePreset(presetKey);
+        }, 100);
+      }
     }));
+    setTimeout(() => {
+      this.isReady = true;
+    }, 1e3);
   }
   onunload() {
     console.debug("Unloading EasyView plugin");
@@ -185,7 +233,9 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     document.body.classList.remove("easyview-force-width");
     document.body.classList.remove("easyview-focus-mode");
     document.body.classList.remove("easyview-zen-mode");
+    document.body.classList.remove("easyview-zen-mode");
     this.clearFontOverrides();
+    this.clearAubadePresetClasses();
     this.clearColorOverrides();
     this.clearLineHeightOverride();
   }
@@ -275,6 +325,11 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
         callback: () => this.selectColorPreset(i)
       });
     }
+    this.addCommand({
+      id: "cycle-aubade-preset",
+      name: "Cycle Aubade Color Scheme",
+      callback: () => this.cycleAubadePreset()
+    });
   }
   /**
    * Restore persisted states on load
@@ -289,12 +344,12 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     if (this.settings.lineWidthExpanded) {
       document.body.classList.add("easyview-force-width");
     }
-    if (this.settings.activeFontPreset > 0) {
+    if (this.settings.activeFontPreset > 0 && this.isBrutalistTheme()) {
       const n = this.settings.activeFontPreset;
       const body = this.settings[`fontPreset${n}Body`];
       const ui = this.settings[`fontPreset${n}UI`];
       const mono = this.settings[`fontPreset${n}Mono`];
-      this.applyFont(body, ui, mono, false);
+      this.applyFontInternal(body, ui, mono);
     }
     if (this.settings.activeColorPreset > 0) {
       const n = this.settings.activeColorPreset;
@@ -305,6 +360,10 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
       this.applyColor(lightUI, lightBody, darkUI, darkBody, false);
     }
     this.applyLineHeight(this.settings.activeLineHeightIndex, false);
+    if (this.settings.activeAubadePreset > 0 && this.isAubadeTheme()) {
+      const presetKey = this.settings.activeAubadePreset === 1 ? this.settings.aubadePreset1 : this.settings.activeAubadePreset === 2 ? this.settings.aubadePreset2 : this.settings.aubadePreset3;
+      this.applyAubadePreset(presetKey);
+    }
   }
   refreshStatusBar() {
     if (this.statusBarItem) this.statusBarItem.empty();
@@ -375,6 +434,12 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
       (0, import_obsidian.setIcon)(colorBtn, "palette");
       colorBtn.title = "Cycle Font Color";
       colorBtn.onclick = () => this.cycleColor();
+    }
+    if (this.settings.showAubadePresetBtn && this.isAubadeTheme()) {
+      const aubadeBtn = this.statusBarItem.createEl("button", { cls: "easy-view-btn" });
+      (0, import_obsidian.setIcon)(aubadeBtn, "paint-bucket");
+      aubadeBtn.title = "Cycle Aubade Color Scheme";
+      aubadeBtn.onclick = () => this.cycleAubadePreset();
     }
     if (this.settings.showThemeBtn) {
       this.themeBtn = this.statusBarItem.createEl("button", { cls: "easy-view-btn easy-view-theme-btn" });
@@ -515,6 +580,65 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     this.saveSettings();
   }
   /**
+   * Check if Brutalist theme is currently active
+   */
+  isBrutalistTheme() {
+    var _a;
+    const cssTheme = this.app.vault.getConfig("cssTheme");
+    return (_a = cssTheme == null ? void 0 : cssTheme.toLowerCase().includes("brutalist")) != null ? _a : false;
+  }
+  /**
+   * Check if Aubade theme is currently active
+   */
+  isAubadeTheme() {
+    var _a;
+    const cssTheme = this.app.vault.getConfig("cssTheme");
+    return (_a = cssTheme == null ? void 0 : cssTheme.toLowerCase().includes("aubade")) != null ? _a : false;
+  }
+  /**
+   * Cycle through Aubade color scheme presets
+   */
+  cycleAubadePreset() {
+    if (!this.isAubadeTheme()) {
+      this.notify("Color schemes only apply to Aubade theme");
+      return;
+    }
+    this.settings.activeAubadePreset = (this.settings.activeAubadePreset + 1) % 4;
+    if (this.settings.activeAubadePreset === 0) {
+      this.clearAubadePreset();
+      this.notify("Color Scheme: Default");
+    } else {
+      const presetKey = this.settings.activeAubadePreset === 1 ? this.settings.aubadePreset1 : this.settings.activeAubadePreset === 2 ? this.settings.aubadePreset2 : this.settings.aubadePreset3;
+      this.applyAubadePreset(presetKey);
+      this.notify(`Color Scheme: ${AUBADE_PRESETS[presetKey] || presetKey}`);
+    }
+    this.saveSettings();
+  }
+  /**
+   * Apply an Aubade color scheme preset
+   */
+  applyAubadePreset(presetClass) {
+    this.clearAubadePresetClasses();
+    if (presetClass && presetClass !== "preset-default") {
+      document.body.classList.add(presetClass);
+    }
+  }
+  /**
+   * Clear all Aubade preset classes from body
+   */
+  clearAubadePresetClasses() {
+    Object.keys(AUBADE_PRESETS).forEach((presetClass) => {
+      document.body.classList.remove(presetClass);
+    });
+  }
+  /**
+   * Clear Aubade preset (reset to default)
+   */
+  clearAubadePreset() {
+    this.clearAubadePresetClasses();
+    this.settings.activeAubadePreset = 0;
+  }
+  /**
    * Get the Style Settings plugin instance if available
    */
   getStyleSettings() {
@@ -554,6 +678,18 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     }
   }
   applyFont(body, ui, mono, showNotice = true) {
+    if (!this.isBrutalistTheme()) {
+      if (showNotice) {
+        this.notify("Font presets only apply to Brutalist theme");
+      }
+      return;
+    }
+    this.applyFontInternal(body, ui, mono);
+  }
+  /**
+   * Internal method to apply fonts without theme check (used by restoreStates)
+   */
+  applyFontInternal(body, ui, mono) {
     document.body.style.setProperty("--font-text-override", body);
     document.body.style.setProperty("--font-ui-override", ui);
     document.body.style.setProperty("--font-monospace-override", mono);
@@ -762,6 +898,43 @@ var EasyViewSettingTab = class extends import_obsidian.PluginSettingTab {
       this.plugin.settings.showZenBtn = v;
       await this.plugin.saveSettings();
     }));
+    containerEl.createEl("h3", { text: "Aubade Color Scheme" });
+    new import_obsidian.Setting(containerEl).setName("Show Color Scheme Button (Paint Bucket)").setDesc("Only visible when Aubade theme is active").addToggle((t) => t.setValue(this.plugin.settings.showAubadePresetBtn).onChange(async (v) => {
+      this.plugin.settings.showAubadePresetBtn = v;
+      await this.plugin.saveSettings();
+      this.plugin.refreshStatusBar();
+    }));
+    const presetOptions = AUBADE_PRESETS;
+    new import_obsidian.Setting(containerEl).setName("Slot 1 Preset").addDropdown((d) => {
+      Object.keys(presetOptions).forEach((key) => {
+        d.addOption(key, presetOptions[key]);
+      });
+      d.setValue(this.plugin.settings.aubadePreset1);
+      d.onChange(async (v) => {
+        this.plugin.settings.aubadePreset1 = v;
+        await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian.Setting(containerEl).setName("Slot 2 Preset").addDropdown((d) => {
+      Object.keys(presetOptions).forEach((key) => {
+        d.addOption(key, presetOptions[key]);
+      });
+      d.setValue(this.plugin.settings.aubadePreset2);
+      d.onChange(async (v) => {
+        this.plugin.settings.aubadePreset2 = v;
+        await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian.Setting(containerEl).setName("Slot 3 Preset").addDropdown((d) => {
+      Object.keys(presetOptions).forEach((key) => {
+        d.addOption(key, presetOptions[key]);
+      });
+      d.setValue(this.plugin.settings.aubadePreset3);
+      d.onChange(async (v) => {
+        this.plugin.settings.aubadePreset3 = v;
+        await this.plugin.saveSettings();
+      });
+    });
     new import_obsidian.Setting(containerEl).setName("Show Font Switcher (Aa)").addToggle((t) => t.setValue(this.plugin.settings.showFontBtn).onChange(async (v) => {
       this.plugin.settings.showFontBtn = v;
       await this.plugin.saveSettings();
