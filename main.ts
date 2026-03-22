@@ -2,46 +2,6 @@ import { App, Plugin, PluginSettingTab, Setting, setIcon, Notice, Menu, Markdown
 
 // --- Constants (Options) ---
 
-const BODY_FONTS: Record<string, string> = {
-    "'iA Writer Quattro S', sans-serif": "iA Writer Quattro S (Sans)",
-    "'Montserrat', sans-serif": "Montserrat (Sans)",
-    "'Sen', sans-serif": "Sen (Sans)",
-    "'Libre Franklin', sans-serif": "Libre Franklin (Sans)",
-    "'iA Writer Duo S', sans-serif": "iA Writer Duo S (Sans)",
-    "'Libre Baskerville', serif": "Libre Baskerville (Serif)",
-    "'Hepta Slab', serif": "Hepta Slab (Serif)",
-    "'Libre Caslon Text', serif": "Libre Caslon Text (Serif)",
-    "'Spectral', serif": "Spectral (Serif)",
-    "'Noto Sans Mono', monospace": "Noto Sans Mono (Mono Sans)",
-    "'iA Writer Mono S', monospace": "iA Writer Mono S (Mono Sans)",
-    "'Azeret Mono', monospace": "Azeret Mono (Mono Sans)",
-    "'Space Mono', monospace": "Space Mono (Mono Sans)"
-};
-
-const UI_FONTS: Record<string, string> = {
-    "'Sen', sans-serif": "Sen (Sans)",
-    "'Montserrat', sans-serif": "Montserrat (Sans)",
-    "'iA Writer Quattro S', sans-serif": "iA Writer Quattro S (Sans)",
-    "'Libre Franklin', sans-serif": "Libre Franklin (Sans)",
-    "'iA Writer Duo S', sans-serif": "iA Writer Duo S (Sans)",
-    "'Marcellus', serif": "Marcellus (Serif)",
-    "'Libre Baskerville', serif": "Libre Baskerville (Serif)",
-    "'Hepta Slab', serif": "Hepta Slab (Serif)",
-    "'Libre Caslon Text', serif": "Libre Caslon Text (Serif)",
-    "'Spectral', serif": "Spectral (Serif)",
-    "'Noto Sans Mono', monospace": "Noto Sans Mono (Mono Sans)",
-    "'iA Writer Mono S', monospace": "iA Writer Mono S (Mono Sans)",
-    "'Azeret Mono', monospace": "Azeret Mono (Mono Sans)",
-    "'Space Mono', monospace": "Space Mono (Mono Sans)"
-};
-
-const MONO_FONTS: Record<string, string> = {
-    "'Noto Sans Mono', monospace": "Noto Sans Mono (Default)",
-    "'iA Writer Mono S', monospace": "iA Writer Mono S (Mono Sans)",
-    "'Azeret Mono', monospace": "Azeret Mono (Mono Sans)",
-    "'Space Mono, monospace": "Space Mono (Mono Sans)"
-};
-
 const LIGHT_UI_COLORS: Record<string, string> = {
     '#505050': '#505050',
     '#404040': '#404040',
@@ -129,7 +89,6 @@ interface EasyViewSettings {
     showLineWidthBtn: boolean;
     showFocusBtn: boolean;
     showZenBtn: boolean;
-    showFontBtn: boolean;
     showColorBtn: boolean;
     showLineHeightBtn: boolean;
     showReadingModeBtn: boolean;
@@ -138,28 +97,11 @@ interface EasyViewSettings {
     focusModeActive: boolean;
     zenModeActive: boolean;
     lineWidthExpanded: boolean;
-    activeFontPreset: number;  // 0=default, 1-3=presets
     activeColorPreset: number;
     activeLineHeightIndex: number;
 
     // Notifications
     showNotifications: boolean;
-
-    // Font Presets (Body, UI, Mono) with Names
-    fontPreset1Name: string;
-    fontPreset1Body: string;
-    fontPreset1UI: string;
-    fontPreset1Mono: string;
-
-    fontPreset2Name: string;
-    fontPreset2Body: string;
-    fontPreset2UI: string;
-    fontPreset2Mono: string;
-
-    fontPreset3Name: string;
-    fontPreset3Body: string;
-    fontPreset3UI: string;
-    fontPreset3Mono: string;
 
     // Color Presets with Names
     colorPreset1Name: string;
@@ -198,7 +140,6 @@ const DEFAULT_SETTINGS: EasyViewSettings = {
     showLineWidthBtn: false,
     showFocusBtn: false,
     showZenBtn: false,
-    showFontBtn: false,
     showColorBtn: false,
     showLineHeightBtn: false,
     showReadingModeBtn: false,
@@ -207,30 +148,11 @@ const DEFAULT_SETTINGS: EasyViewSettings = {
     focusModeActive: false,
     zenModeActive: false,
     lineWidthExpanded: false,
-    activeFontPreset: 0,
     activeColorPreset: 0,
     activeLineHeightIndex: 1, // Default to 1.5
 
     // Notifications
     showNotifications: true,
-
-    // Defaults P1 (Serif-ish)
-    fontPreset1Name: "Serif",
-    fontPreset1Body: "'Libre Baskerville', serif",
-    fontPreset1UI: "'Libre Baskerville', serif",
-    fontPreset1Mono: "'Noto Sans Mono', monospace",
-
-    // Defaults P2 (Mono)
-    fontPreset2Name: "Mono",
-    fontPreset2Body: "'Noto Sans Mono', monospace",
-    fontPreset2UI: "'Noto Sans Mono', monospace",
-    fontPreset2Mono: "'Noto Sans Mono', monospace",
-
-    // Defaults P3 (Sans)
-    fontPreset3Name: "Sans",
-    fontPreset3Body: "'Sen', sans-serif",
-    fontPreset3UI: "'Sen', sans-serif",
-    fontPreset3Mono: "'Noto Sans Mono', monospace",
 
     // Defaults Colors
     colorPreset1Name: "High Contrast",
@@ -277,32 +199,11 @@ export default class EasyViewPlugin extends Plugin {
         this.restoreStates();
 
         this.refreshStatusBar();
-        let wasBrutalist = this.isBrutalistTheme(); // Track theme state
+
         this.registerEvent(this.app.workspace.on('css-change', () => {
             this.updateThemeIcon();
 
             if (!this.isReady) return;
-
-            const isBrutalist = this.isBrutalistTheme();
-
-            // Switching away from Brutalist: clear font overrides (but keep setting saved)
-            if (wasBrutalist && !isBrutalist && this.settings.activeFontPreset > 0) {
-                this.clearFontOverrides();
-            }
-
-            // Switching back to Brutalist: re-apply saved font preset
-            if (!wasBrutalist && isBrutalist && this.settings.activeFontPreset > 0) {
-                const n = this.settings.activeFontPreset as 1 | 2 | 3;
-                // @ts-ignore
-                const body = this.settings[`fontPreset${n}Body`];
-                // @ts-ignore
-                const ui = this.settings[`fontPreset${n}UI`];
-                // @ts-ignore
-                const mono = this.settings[`fontPreset${n}Mono`];
-                this.applyFontInternal(body, ui, mono);
-            }
-
-            wasBrutalist = isBrutalist;
 
             // Aubade Theme Logic: Re-apply preset on theme mode switch (Light/Dark)
             if (this.isAubadeTheme() && this.settings.activeAubadePreset > 0) {
@@ -328,8 +229,6 @@ export default class EasyViewPlugin extends Plugin {
         document.body.classList.remove('easyview-force-width');
         document.body.classList.remove('easyview-focus-mode');
         document.body.classList.remove('easyview-zen-mode');
-        document.body.classList.remove('easyview-zen-mode');
-        this.clearFontOverrides();
         this.clearAubadePresetClasses();
         this.clearColorOverrides();
         this.clearLineHeightOverride();
@@ -385,13 +284,6 @@ export default class EasyViewPlugin extends Plugin {
             callback: () => this.toggleTheme()
         });
 
-        // Font Preset
-        this.addCommand({
-            id: 'cycle-font-preset',
-            name: 'Cycle Font Preset',
-            callback: () => this.cycleFont()
-        });
-
         // Color Preset
         this.addCommand({
             id: 'cycle-color-preset',
@@ -432,13 +324,8 @@ export default class EasyViewPlugin extends Plugin {
             callback: () => this.resetFontSize()
         });
 
-        // Direct preset selection
+        // Direct color preset selection
         for (let i = 1; i <= 3; i++) {
-            this.addCommand({
-                id: `select-font-preset-${i}`,
-                name: `Select Font Preset ${i}`,
-                callback: () => this.selectFontPreset(i)
-            });
             this.addCommand({
                 id: `select-color-preset-${i}`,
                 name: `Select Color Preset ${i}`,
@@ -471,18 +358,6 @@ export default class EasyViewPlugin extends Plugin {
         // Restore Line Width
         if (this.settings.lineWidthExpanded) {
             document.body.classList.add('easyview-force-width');
-        }
-
-        // Restore Font Preset (only if Brutalist theme is active)
-        if (this.settings.activeFontPreset > 0 && this.isBrutalistTheme()) {
-            const n = this.settings.activeFontPreset as 1 | 2 | 3;
-            // @ts-ignore
-            const body = this.settings[`fontPreset${n}Body`];
-            // @ts-ignore
-            const ui = this.settings[`fontPreset${n}UI`];
-            // @ts-ignore
-            const mono = this.settings[`fontPreset${n}Mono`];
-            this.applyFontInternal(body, ui, mono); // Don't notify on restore
         }
 
         // Restore Color Preset
@@ -583,13 +458,6 @@ export default class EasyViewPlugin extends Plugin {
             zenBtn.onclick = () => this.toggleZenMode();
         }
 
-        if (this.settings.showFontBtn) {
-            const fontBtn = this.statusBarItem.createEl('button', { cls: 'easy-view-btn' });
-            setIcon(fontBtn, 'type');
-            fontBtn.title = "Cycle Font Preset";
-            fontBtn.onclick = () => this.cycleFont();
-        }
-
         if (this.settings.showColorBtn) {
             const colorBtn = this.statusBarItem.createEl('button', { cls: 'easy-view-btn' });
             setIcon(colorBtn, 'palette');
@@ -635,22 +503,6 @@ export default class EasyViewPlugin extends Plugin {
             .setTitle(this.settings.lineWidthExpanded ? '✓ Full Width' : 'Full Width')
             .setIcon('arrow-left-right')
             .onClick(() => this.toggleLineWidth()));
-
-        menu.addSeparator();
-
-        // Font Presets submenu
-        menu.addItem(item => item
-            .setTitle('Font Presets')
-            .setIcon('type')
-            .onClick(() => { }));
-
-        for (let i = 0; i <= 3; i++) {
-            const label = i === 0 ? 'Default' : this.getPresetName('font', i);
-            const isActive = this.settings.activeFontPreset === i;
-            menu.addItem(item => item
-                .setTitle(`${isActive ? '✓ ' : '   '}${label}`)
-                .onClick(() => this.selectFontPreset(i)));
-        }
 
         menu.addSeparator();
 
@@ -705,7 +557,7 @@ export default class EasyViewPlugin extends Plugin {
     /**
      * Get preset name
      */
-    getPresetName(type: 'font' | 'color', n: number): string {
+    getPresetName(type: 'color', n: number): string {
         // @ts-ignore
         return this.settings[`${type}Preset${n}Name`] || `Preset ${n}`;
     }
@@ -784,52 +636,6 @@ export default class EasyViewPlugin extends Plugin {
         this.notify(isActive ? 'Zen Mode: ON' : 'Zen Mode: OFF');
     }
 
-    cycleFont() {
-        this.settings.activeFontPreset = (this.settings.activeFontPreset + 1) % 4;
-        if (this.settings.activeFontPreset === 0) {
-            this.clearFontOverrides();
-            this.notify('Fonts: Default');
-        } else {
-            const n = this.settings.activeFontPreset as 1 | 2 | 3;
-            // @ts-ignore
-            const body = this.settings[`fontPreset${n}Body`];
-            // @ts-ignore
-            const ui = this.settings[`fontPreset${n}UI`];
-            // @ts-ignore
-            const mono = this.settings[`fontPreset${n}Mono`];
-            this.applyFont(body, ui, mono);
-            this.notify(`Fonts: ${this.getPresetName('font', n)}`);
-        }
-        this.saveSettings();
-    }
-
-    selectFontPreset(n: number) {
-        this.settings.activeFontPreset = n;
-        if (n === 0) {
-            this.clearFontOverrides();
-            this.notify('Fonts: Default');
-        } else {
-            // @ts-ignore
-            const body = this.settings[`fontPreset${n}Body`];
-            // @ts-ignore
-            const ui = this.settings[`fontPreset${n}UI`];
-            // @ts-ignore
-            const mono = this.settings[`fontPreset${n}Mono`];
-            this.applyFont(body, ui, mono);
-            this.notify(`Fonts: ${this.getPresetName('font', n)}`);
-        }
-        this.saveSettings();
-    }
-
-    /**
-     * Check if Brutalist theme is currently active
-     */
-    isBrutalistTheme(): boolean {
-        // @ts-ignore - accessing internal config
-        const cssTheme = this.app.vault.getConfig('cssTheme');
-        return cssTheme?.toLowerCase().includes('brutalist') ?? false;
-    }
-
     /**
      * Check if Aubade theme is currently active
      */
@@ -899,73 +705,6 @@ export default class EasyViewPlugin extends Plugin {
     getStyleSettings(): any | null {
         // @ts-ignore - accessing internal plugins object
         return this.app.plugins?.plugins?.['obsidian-style-settings'] ?? null;
-    }
-
-    /**
-     * Update Style Settings with font values for persistence
-     */
-    syncFontToStyleSettings(body: string, ui: string, mono: string) {
-        const styleSettings = this.getStyleSettings();
-        if (styleSettings?.settingsManager) {
-            try {
-                styleSettings.settingsManager.setSetting(STYLE_SETTINGS_SECTION_ID, 'font-text-override', body);
-                styleSettings.settingsManager.setSetting(STYLE_SETTINGS_SECTION_ID, 'font-ui-override', ui);
-                styleSettings.settingsManager.setSetting(STYLE_SETTINGS_SECTION_ID, 'font-monospace-override', mono);
-                console.debug('EasyView: Synced fonts to Style Settings');
-            } catch (e) {
-                console.warn('EasyView: Failed to sync fonts to Style Settings', e);
-            }
-        }
-    }
-
-    /**
-     * Clear font values from Style Settings (reset to theme defaults)
-     */
-    clearFontFromStyleSettings() {
-        const styleSettings = this.getStyleSettings();
-        if (styleSettings?.settingsManager) {
-            try {
-                styleSettings.settingsManager.clearSetting(STYLE_SETTINGS_SECTION_ID, 'font-text-override');
-                styleSettings.settingsManager.clearSetting(STYLE_SETTINGS_SECTION_ID, 'font-ui-override');
-                styleSettings.settingsManager.clearSetting(STYLE_SETTINGS_SECTION_ID, 'font-monospace-override');
-                console.debug('EasyView: Cleared fonts from Style Settings');
-            } catch (e) {
-                console.warn('EasyView: Failed to clear fonts from Style Settings', e);
-            }
-        }
-    }
-
-    applyFont(body: string, ui: string, mono: string, showNotice: boolean = true) {
-        // Only apply font presets when Brutalist theme is active
-        if (!this.isBrutalistTheme()) {
-            if (showNotice) {
-                this.notify('Font presets only apply to Brutalist theme');
-            }
-            return;
-        }
-        this.applyFontInternal(body, ui, mono);
-    }
-
-    /**
-     * Internal method to apply fonts without theme check (used by restoreStates)
-     */
-    applyFontInternal(body: string, ui: string, mono: string) {
-        // Apply immediately via inline styles for instant feedback
-        document.body.style.setProperty('--font-text-override', body);
-        document.body.style.setProperty('--font-ui-override', ui);
-        document.body.style.setProperty('--font-monospace-override', mono);
-
-        // Persist to Style Settings for survival across restarts
-        this.syncFontToStyleSettings(body, ui, mono);
-    }
-
-    clearFontOverrides() {
-        document.body.style.removeProperty('--font-text-override');
-        document.body.style.removeProperty('--font-ui-override');
-        document.body.style.removeProperty('--font-monospace-override');
-
-        // Clear from Style Settings as well
-        this.clearFontFromStyleSettings();
     }
 
     cycleColor() {
@@ -1169,6 +908,7 @@ class EasyViewSettingTab extends PluginSettingTab {
         new Setting(containerEl).setName('Show Reading Mode').addToggle(t => t.setValue(this.plugin.settings.showReadingModeBtn).onChange(async v => { this.plugin.settings.showReadingModeBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show Focus Mode (◎)').addToggle(t => t.setValue(this.plugin.settings.showFocusBtn).onChange(async v => { this.plugin.settings.showFocusBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show Zen Mode').setDesc('Ultra focus - hides everything except content').addToggle(t => t.setValue(this.plugin.settings.showZenBtn).onChange(async v => { this.plugin.settings.showZenBtn = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Show Color Switcher (Palette)').addToggle(t => t.setValue(this.plugin.settings.showColorBtn).onChange(async v => { this.plugin.settings.showColorBtn = v; await this.plugin.saveSettings(); }));
 
         // --- Aubade Color Scheme ---
         containerEl.createEl('h3', { text: 'Aubade Color Scheme' });
@@ -1222,14 +962,6 @@ class EasyViewSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 });
             });
-        new Setting(containerEl).setName('Show Font Switcher (Aa)').addToggle(t => t.setValue(this.plugin.settings.showFontBtn).onChange(async v => { this.plugin.settings.showFontBtn = v; await this.plugin.saveSettings(); }));
-        new Setting(containerEl).setName('Show Color Switcher (Palette)').addToggle(t => t.setValue(this.plugin.settings.showColorBtn).onChange(async v => { this.plugin.settings.showColorBtn = v; await this.plugin.saveSettings(); }));
-
-        // --- Font Presets ---
-        containerEl.createEl('h3', { text: 'Font Switcher Presets' });
-        this.addFontPreset(containerEl, 1);
-        this.addFontPreset(containerEl, 2);
-        this.addFontPreset(containerEl, 3);
 
         // --- Color Presets ---
         containerEl.createEl('h3', { text: 'Color Switcher Presets' });
@@ -1240,62 +972,6 @@ class EasyViewSettingTab extends PluginSettingTab {
         // --- Keyboard Shortcuts Info ---
         containerEl.createEl('h3', { text: 'Keyboard Shortcuts' });
         containerEl.createEl('p', { text: 'All features are available via the Command Palette (Cmd/Ctrl+P). Search for "EasyView" to find all commands. You can assign custom hotkeys in Settings → Hotkeys.' });
-    }
-
-    addFontPreset(container: HTMLElement, n: number) {
-        container.createEl('h4', { text: `Preset ${n}` });
-
-        // Preset Name
-        new Setting(container)
-            .setName('Preset Name')
-            .addText(t => t
-                // @ts-ignore
-                .setValue(this.plugin.settings[`fontPreset${n}Name`])
-                .setPlaceholder(`Preset ${n}`)
-                .onChange(async v => {
-                    // @ts-ignore
-                    this.plugin.settings[`fontPreset${n}Name`] = v || `Preset ${n}`;
-                    await this.plugin.saveSettings();
-                }));
-
-        // Body Font
-        new Setting(container)
-            .setName('Body Font')
-            .addDropdown(d => d
-                .addOptions(BODY_FONTS)
-                // @ts-ignore
-                .setValue(this.plugin.settings[`fontPreset${n}Body`])
-                .onChange(async v => {
-                    // @ts-ignore
-                    this.plugin.settings[`fontPreset${n}Body`] = v;
-                    await this.plugin.saveSettings();
-                }));
-
-        // UI Font
-        new Setting(container)
-            .setName('UI Font')
-            .addDropdown(d => d
-                .addOptions(UI_FONTS)
-                // @ts-ignore
-                .setValue(this.plugin.settings[`fontPreset${n}UI`])
-                .onChange(async v => {
-                    // @ts-ignore
-                    this.plugin.settings[`fontPreset${n}UI`] = v;
-                    await this.plugin.saveSettings();
-                }));
-
-        // Mono Font
-        new Setting(container)
-            .setName('Monospace Font')
-            .addDropdown(d => d
-                .addOptions(MONO_FONTS)
-                // @ts-ignore
-                .setValue(this.plugin.settings[`fontPreset${n}Mono`])
-                .onChange(async v => {
-                    // @ts-ignore
-                    this.plugin.settings[`fontPreset${n}Mono`] = v;
-                    await this.plugin.saveSettings();
-                }));
     }
 
     addColorPreset(container: HTMLElement, n: number) {
