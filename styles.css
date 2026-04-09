@@ -1,8 +1,6 @@
-/* EasyView Plugin Styles */
+/* EasyView Plugin Styles - Cleaned for Theme Compatibility */
 
-/* NUCLEAR OPTION: NO HOVER BACKGROUNDS ON CONTAINER 
-   Targeting with body to increase specificity over themes 
-*/
+/* NO HOVER BACKGROUNDS ON CONTAINER */
 body .status-bar-item.plugin-easyview,
 body .status-bar-item.easy-view-container-unique {
     padding: 0 !important;
@@ -46,8 +44,6 @@ body .status-bar-item.easy-view-container-unique:hover {
 }
 
 /* HOVER EFFECTS - ICON ONLY */
-
-/* Light Mode: Faux bold */
 body.theme-light .easy-view-btn:hover {
     background-color: transparent !important;
     color: var(--text-normal) !important;
@@ -56,7 +52,6 @@ body.theme-light .easy-view-btn:hover {
     box-shadow: none !important;
 }
 
-/* Dark Mode: Light Grey */
 body.theme-dark .easy-view-btn:hover {
     background-color: transparent !important;
     color: #d1d1d1 !important;
@@ -64,9 +59,7 @@ body.theme-dark .easy-view-btn:hover {
     box-shadow: none !important;
 }
 
-/* --- ADVANCED FEATURES --- */
-
-/* Line Width Toggle */
+/* ADVANCED FEATURES */
 body.easyview-force-width .markdown-source-view.mod-cm6 .cm-sizer,
 body.easyview-force-width .markdown-preview-view {
     max-width: 100% !important;
@@ -75,9 +68,7 @@ body.easyview-force-width .markdown-preview-view {
     margin-right: 0 !important;
 }
 
-/* ================================================================= */
-/* FOCUS MODE                                                        */
-/* ================================================================= */
+/* FOCUS MODE */
 body.easyview-focus-mode .workspace-ribbon,
 body.easyview-focus-mode .workspace-split.mod-left-split,
 body.easyview-focus-mode .workspace-split.mod-right-split {
@@ -98,9 +89,7 @@ body.mod-mac.easyview-zen-mode .view-header-nav-buttons {
     -webkit-app-region: no-drag;
 }
 
-/* ================================================================= */
-/* ZEN MODE (Ultra Focus)                                            */
-/* ================================================================= */
+/* ZEN MODE */
 body.easyview-zen-mode .workspace-ribbon,
 body.easyview-zen-mode .workspace-split.mod-left-split,
 body.easyview-zen-mode .workspace-split.mod-right-split,
@@ -134,47 +123,4 @@ body.easyview-zen-mode .view-content {
 
 body.easyview-zen-mode .workspace-tabs {
     padding-top: 0 !important;
-}
-
-/* ================================================================= */
-/* LINE HEIGHT                                                       */
-/* ================================================================= */
-body {
-    --line-height-custom: 1.5;
-}
-
-.markdown-source-view.mod-cm6 .cm-line,
-.markdown-preview-view p,
-.markdown-preview-view li,
-.markdown-rendered {
-    line-height: var(--line-height-custom) !important;
-}
-
-/* ================================================================= */
-/* AUBADE PRESETS (Color Schemes)                                    */
-/* ================================================================= */
-
-/* Stones (Sober) */
-body.preset-stones {
-    --b-dark-surface: #2a2a2a;
-    --b-dark-bg: #1e1e1e;
-    --text-accent: #a0a0a0;
-    --interactive-accent: #888888;
-}
-
-/* Brutalist (Low Fidelity) */
-body.preset-brutalist {
-    --b-dark-surface: #000000;
-    --b-dark-bg: #000000;
-    --text-accent: #ffffff;
-    --interactive-accent: #ffffff;
-    --background-modifier-border: #ffffff;
-    --text-normal: #ffffff;
-}
-
-/* Light mode adjustments for Stones */
-body.theme-light.preset-stones {
-    --background-primary: #e0e0e0;
-    --background-secondary: #d4d4d4;
-    --text-normal: #1a1a1a;
 }
