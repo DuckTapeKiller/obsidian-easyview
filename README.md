@@ -2,13 +2,14 @@
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/ducktapekiller)
 
-**Easy View** is a minimalist status bar utility for Obsidian that provides instant control over your writing environment. Adjust font sizes, toggle themes, switch between focus modes, and manage your layout—all from the status bar or via keyboard shortcuts.
+**Easy View** is a minimalist status bar utility for Obsidian that provides instant control over your writing environment. Adjust font sizes, toggle themes, switch between focus modes, and manage your layout—all from the status bar, ribbon menu (on mobile), or via keyboard shortcuts.
 
 ---
 
 ## Table of Contents
 
 - [Status Bar Controls](#status-bar-controls)
+- [Mobile Support](#mobile-support)
 - [Focus Modes](#focus-modes)
 - [Reading Mode Toggle](#reading-mode-toggle)
 - [Keyboard Shortcuts](#keyboard-shortcuts)
@@ -27,14 +28,25 @@ Easy View places convenient buttons in the Obsidian status bar for one-click acc
 | :--- | :---: | :--- |
 | **Decrease Font Size** | `−` | Reduces the global font size by 1px |
 | **Increase Font Size** | `+` | Increases the global font size by 1px |
-| **Reset Font Size** | `↺` | Returns font size to your configured default |
+| **Reset Font Size** | `↺` | Returns font size to your configured default (Default: 18px) |
 | **Toggle Theme** | `☀` / `☾` | Switches between Light and Dark mode |
-| **Toggle Line Width** | `↔` | Switches between standard and full-width layout |
 | **Cycle Reading Mode** | `📖` | Cycles through Source, Live Preview, and Reading View |
 | **Toggle Focus Mode** | `◎` | Hides sidebars and ribbon |
 | **Toggle Zen Mode** | `👁` | Ultra focus—hides everything except content |
 
 All buttons can be individually enabled or disabled in the plugin settings.
+
+---
+
+## Mobile Support
+
+Easy View is mobile-optimized to ensure your preferred actions are always accessible:
+
+### Navigation Bar Shortcut
+Since mobile devices lack a status bar, Easy View adds a shortcut icon directly to the **Mobile Navigation Bar menu** (accessible via the three-line "hamburger" icon at the bottom right).
+
+- **Always Accessible**: The shortcut is enabled by default.
+- **Configurable**: You can select **ONE** primary action for this shortcut (e.g., Theme Toggle, Font Resizing, or Focus Mode) in the plugin settings.
 
 ---
 
@@ -88,7 +100,6 @@ All Easy View features are accessible via Obsidian's **Command Palette** (`Cmd/C
 | :--- | :--- |
 | Toggle Focus Mode | Show/hide sidebars and ribbon |
 | Toggle Zen Mode | Enter/exit ultra focus mode |
-| Toggle Line Width | Switch between standard and full width |
 | Toggle Theme | Switch between light and dark mode |
 | Cycle Reading Mode | Advance to next editor mode |
 | Increase Font Size | Increase by 1px |
@@ -106,7 +117,6 @@ The menu provides:
 - **Toggle Options** with checkmarks (✓) showing current state
   - Focus Mode
   - Zen Mode
-  - Full Width
 - **Quick Actions**
   - Reading Mode cycle
   - Theme toggle
@@ -121,7 +131,6 @@ Easy View remembers your preferences across Obsidian restarts:
 | :--- | :---: |
 | Focus Mode on/off | ✓ |
 | Zen Mode on/off | ✓ |
-| Line Width expanded/standard | ✓ |
 
 ---
 
@@ -134,21 +143,25 @@ Access the Easy View settings via **Settings → Easy View**.
 | Setting | Description |
 | :--- | :--- |
 | **Button Size** | Size of status bar icons in pixels (10-24px) |
-| **Default Font Size** | Target size for the Reset button (in pixels) |
-| **Show Notifications** | Display brief feedback messages when actions are performed |
+| **Default Font Size** | Target size for the Reset button (Default: 18px) |
+| **Show Action Tooltips** | Display brief popup notifications when actions are performed |
 
-### Button Visibility
+### Mobile / Ribbon
 
-Toggle any status bar button on or off:
+- **Show Ribbon Icon (Mobile Only)**: Display a shortcut icon on the mobile navigation bar.
+- **Ribbon Icon Action**: Select which feature the shortcut should trigger (Toggle Theme, Increase/Decrease Font, Focus, etc.).
+
+### Visibility
+
+Toggle any interface element on or off:
 
 - Show Decrement (−)
 - Show Increment (+)
 - Show Reset (↺)
 - Show Theme (☀/☾)
-- Show Line Width (↔)
-- Show Reading Mode (📖)
-- Show Focus Mode (◎)
-- Show Zen Mode (👁)
+- Show Focus (◎)
+- Show View Switcher (📖)
+- Show Zen (👁)
 
 ---
 
