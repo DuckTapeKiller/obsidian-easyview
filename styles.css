@@ -59,14 +59,6 @@ body.theme-dark .easy-view-btn:hover {
     box-shadow: none !important;
 }
 
-/* ADVANCED FEATURES */
-body.easyview-force-width .markdown-source-view.mod-cm6 .cm-sizer,
-body.easyview-force-width .markdown-preview-view {
-    max-width: 100% !important;
-    width: 100% !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-}
 
 /* FOCUS MODE */
 body.easyview-focus-mode .workspace-ribbon,

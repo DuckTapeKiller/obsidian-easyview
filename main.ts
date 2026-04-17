@@ -7,13 +7,11 @@ interface EasyViewSettings {
     showResetBtn: boolean;
     showThemeBtn: boolean;
     defaultFontSize: number;
-    showLineWidthBtn: boolean;
     showFocusBtn: boolean;
     showZenBtn: boolean;
     showReadingModeBtn: boolean;
     focusModeActive: boolean;
     zenModeActive: boolean;
-    lineWidthExpanded: boolean;
     showNotifications: boolean;
 }
 
@@ -23,14 +21,12 @@ const DEFAULT_SETTINGS: EasyViewSettings = {
     showDecrementBtn: true,
     showResetBtn: true,
     showThemeBtn: true,
-    defaultFontSize: 16,
-    showLineWidthBtn: false,
-    showFocusBtn: false,
+    defaultFontSize: 18,
+    showFocusBtn: true,
     showZenBtn: false,
-    showReadingModeBtn: false,
+    showReadingModeBtn: true,
     focusModeActive: false,
     zenModeActive: false,
-    lineWidthExpanded: false,
     showNotifications: true
 };
 
@@ -57,7 +53,7 @@ export default class EasyViewPlugin extends Plugin {
     onunload() {
         if (this.statusBarItem) this.statusBarItem.remove();
         /* Only clean up the classes that this plugin actually toggles */
-        document.body.classList.remove('easyview-force-width', 'easyview-focus-mode', 'easyview-zen-mode');
+        document.body.classList.remove('easyview-focus-mode', 'easyview-zen-mode');
     }
 
     async loadSettings() {
@@ -78,7 +74,6 @@ export default class EasyViewPlugin extends Plugin {
     registerCommands() {
         this.addCommand({ id: 'toggle-focus-mode', name: 'Toggle Focus Mode', callback: () => this.toggleFocusMode() });
         this.addCommand({ id: 'toggle-zen-mode', name: 'Toggle Zen Mode', callback: () => this.toggleZenMode() });
-        this.addCommand({ id: 'toggle-line-width', name: 'Toggle Line Width', callback: () => this.toggleLineWidth() });
         this.addCommand({ id: 'toggle-theme', name: 'Toggle Theme', callback: () => this.toggleTheme() });
         this.addCommand({ id: 'cycle-reading-mode', name: 'Cycle Reading Mode', callback: () => this.cycleReadingMode() });
         this.addCommand({ id: 'increase-font-size', name: 'Increase Font Size', callback: () => this.adjustFontSize(1) });
@@ -89,7 +84,6 @@ export default class EasyViewPlugin extends Plugin {
     restoreStates() {
         if (this.settings.focusModeActive) document.body.classList.add('easyview-focus-mode');
         if (this.settings.zenModeActive) document.body.classList.add('easyview-zen-mode');
-        if (this.settings.lineWidthExpanded) document.body.classList.add('easyview-force-width');
     }
 
     refreshStatusBar() {
@@ -107,7 +101,6 @@ export default class EasyViewPlugin extends Plugin {
         if (this.settings.showDecrementBtn) this.createBtn('minus', "Decrease", () => this.adjustFontSize(-1));
         if (this.settings.showIncrementBtn) this.createBtn('plus', "Increase", () => this.adjustFontSize(1));
         if (this.settings.showResetBtn) this.createBtn('rotate-ccw', "Reset", () => this.resetFontSize());
-        if (this.settings.showLineWidthBtn) this.createBtn('arrow-left-right', "Width", () => this.toggleLineWidth());
         if (this.settings.showReadingModeBtn) this.createBtn('book-open', "Mode", () => this.cycleReadingMode());
         if (this.settings.showFocusBtn) this.createBtn('maximize', "Focus", () => this.toggleFocusMode());
         if (this.settings.showZenBtn) this.createBtn('eye-off', "Zen", () => this.toggleZenMode());
@@ -130,7 +123,6 @@ export default class EasyViewPlugin extends Plugin {
         const menu = new Menu();
         menu.addItem(i => i.setTitle(this.settings.focusModeActive ? '✓ Focus' : 'Focus').setIcon('maximize').onClick(() => this.toggleFocusMode()));
         menu.addItem(i => i.setTitle(this.settings.zenModeActive ? '✓ Zen' : 'Zen').setIcon('eye-off').onClick(() => this.toggleZenMode()));
-        menu.addItem(i => i.setTitle(this.settings.lineWidthExpanded ? '✓ Full Width' : 'Full Width').setIcon('arrow-left-right').onClick(() => this.toggleLineWidth()));
         menu.addSeparator();
         menu.addItem(i => i.setTitle('Toggle Theme').setIcon('sun').onClick(() => this.toggleTheme()));
         menu.showAtMouseEvent(e);
@@ -141,11 +133,13 @@ export default class EasyViewPlugin extends Plugin {
         let newSize = Math.min(Math.max(currentSize + change, 10), 30);
         (this.app.vault as any).setConfig('baseFontSize', newSize);
         (this.app as any).updateFontSize();
+        this.notify(`Font size: ${newSize}px`);
     }
 
     resetFontSize() {
         (this.app.vault as any).setConfig('baseFontSize', this.settings.defaultFontSize);
         (this.app as any).updateFontSize();
+        this.notify(`Font size reset to ${this.settings.defaultFontSize}px`);
     }
 
     toggleTheme() {
@@ -154,17 +148,12 @@ export default class EasyViewPlugin extends Plugin {
         (this.app.vault as any).setConfig('theme', newTheme);
         (this.app as any).updateTheme();
         this.updateThemeIcon();
+        this.notify(`Theme: ${newTheme === 'obsidian' ? 'Dark' : 'Light'}`);
     }
 
     updateThemeIcon() {
         if (!this.themeBtn) return;
         setIcon(this.themeBtn, (this.app.vault as any).getConfig('theme') === 'obsidian' ? 'moon' : 'sun');
-    }
-
-    toggleLineWidth() {
-        const isExpanded = document.body.classList.toggle('easyview-force-width');
-        this.settings.lineWidthExpanded = isExpanded;
-        this.saveSettings();
     }
 
     toggleFocusMode() {
@@ -175,6 +164,7 @@ export default class EasyViewPlugin extends Plugin {
         const isActive = document.body.classList.toggle('easyview-focus-mode');
         this.settings.focusModeActive = isActive;
         this.saveSettings();
+        this.notify(`Focus Mode: ${isActive ? 'ON' : 'OFF'}`);
     }
 
     toggleZenMode() {
@@ -185,6 +175,7 @@ export default class EasyViewPlugin extends Plugin {
         const isActive = document.body.classList.toggle('easyview-zen-mode');
         this.settings.zenModeActive = isActive;
         this.saveSettings();
+        this.notify(`Zen Mode: ${isActive ? 'ON' : 'OFF'}`);
     }
 
     cycleReadingMode() {
@@ -194,6 +185,7 @@ export default class EasyViewPlugin extends Plugin {
         let mode = state.mode === 'source' && (state.source ?? true) ? 'source' : (state.mode === 'preview' ? 'source' : 'preview');
         let source = state.mode === 'source' && (state.source ?? true) ? false : (state.mode === 'preview' ? true : false);
         view.setState({ ...state, mode, source }, { history: false });
+        this.notify(`Reading Mode: ${mode === 'preview' ? 'Reading' : 'Editing'}`);
     }
 }
 
@@ -209,9 +201,13 @@ class EasyViewSettingTab extends PluginSettingTab {
         containerEl.createEl('h3', { text: 'Visibility' });
         new Setting(containerEl).setName('Show Decrement').addToggle(t => t.setValue(this.plugin.settings.showDecrementBtn).onChange(async v => { this.plugin.settings.showDecrementBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show Increment').addToggle(t => t.setValue(this.plugin.settings.showIncrementBtn).onChange(async v => { this.plugin.settings.showIncrementBtn = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Show Reset').addToggle(t => t.setValue(this.plugin.settings.showResetBtn).onChange(async v => { this.plugin.settings.showResetBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show Theme').addToggle(t => t.setValue(this.plugin.settings.showThemeBtn).onChange(async v => { this.plugin.settings.showThemeBtn = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Show Focus').addToggle(t => t.setValue(this.plugin.settings.showFocusBtn).onChange(async v => { this.plugin.settings.showFocusBtn = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Show View Switcher').setDesc('Reader / Editing / Source').addToggle(t => t.setValue(this.plugin.settings.showReadingModeBtn).onChange(async v => { this.plugin.settings.showReadingModeBtn = v; await this.plugin.saveSettings(); }));
+        
         containerEl.createEl('h3', { text: 'Features' });
-        new Setting(containerEl).setName('Show Width').addToggle(t => t.setValue(this.plugin.settings.showLineWidthBtn).onChange(async v => { this.plugin.settings.showLineWidthBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show Zen').addToggle(t => t.setValue(this.plugin.settings.showZenBtn).onChange(async v => { this.plugin.settings.showZenBtn = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Show Action Tooltips').setDesc('Show a notification popup when an action (e.g., resizing font) is performed.').addToggle(t => t.setValue(this.plugin.settings.showNotifications).onChange(async v => { this.plugin.settings.showNotifications = v; await this.plugin.saveSettings(); }));
     }
 }
