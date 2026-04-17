@@ -41,13 +41,16 @@ var DEFAULT_SETTINGS = {
   showReadingModeBtn: true,
   focusModeActive: false,
   zenModeActive: false,
-  showNotifications: true
+  showNotifications: true,
+  showRibbonIcon: true,
+  ribbonAction: "toggle-theme"
 };
 var EasyViewPlugin = class extends import_obsidian.Plugin {
   constructor() {
     super(...arguments);
     this.statusBarItem = null;
     this.themeBtn = null;
+    this.ribbonIconEl = null;
     this.isReady = false;
   }
   async onload() {
@@ -56,8 +59,10 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     this.registerCommands();
     this.restoreStates();
     this.refreshStatusBar();
+    this.refreshRibbonIcon();
     this.registerEvent(this.app.workspace.on("css-change", () => {
       this.updateThemeIcon();
+      if (this.settings.ribbonAction === "toggle-theme") this.refreshRibbonIcon();
     }));
     setTimeout(() => {
       this.isReady = true;
@@ -73,6 +78,7 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
   async saveSettings() {
     await this.saveData(this.settings);
     this.refreshStatusBar();
+    this.refreshRibbonIcon();
   }
   notify(message, duration = 1500) {
     if (this.settings.showNotifications) {
@@ -145,6 +151,7 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     this.app.vault.setConfig("theme", newTheme);
     this.app.updateTheme();
     this.updateThemeIcon();
+    if (this.settings.ribbonAction === "toggle-theme") this.refreshRibbonIcon();
     this.notify(`Theme: ${newTheme === "obsidian" ? "Dark" : "Light"}`);
   }
   updateThemeIcon() {
@@ -181,6 +188,56 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     view.setState({ ...state, mode, source }, { history: false });
     this.notify(`Reading Mode: ${mode === "preview" ? "Reading" : "Editing"}`);
   }
+  refreshRibbonIcon() {
+    if (this.ribbonIconEl) {
+      this.ribbonIconEl.remove();
+      this.ribbonIconEl = null;
+    }
+    if (this.settings.showRibbonIcon && import_obsidian.Platform.isMobile) {
+      let icon = "help-circle";
+      let title = "EasyView";
+      let action = () => {
+      };
+      switch (this.settings.ribbonAction) {
+        case "toggle-theme":
+          icon = this.app.vault.getConfig("theme") === "obsidian" ? "moon" : "sun";
+          title = "Toggle Theme";
+          action = () => this.toggleTheme();
+          break;
+        case "increase-font":
+          icon = "plus";
+          title = "Increase Font Size";
+          action = () => this.adjustFontSize(1);
+          break;
+        case "decrease-font":
+          icon = "minus";
+          title = "Decrease Font Size";
+          action = () => this.adjustFontSize(-1);
+          break;
+        case "reset-font":
+          icon = "rotate-ccw";
+          title = "Reset Font Size";
+          action = () => this.resetFontSize();
+          break;
+        case "toggle-focus":
+          icon = "maximize";
+          title = "Toggle Focus Mode";
+          action = () => this.toggleFocusMode();
+          break;
+        case "toggle-zen":
+          icon = "eye-off";
+          title = "Toggle Zen Mode";
+          action = () => this.toggleZenMode();
+          break;
+        case "cycle-mode":
+          icon = "book-open";
+          title = "Cycle Reading Mode";
+          action = () => this.cycleReadingMode();
+          break;
+      }
+      this.ribbonIconEl = this.addRibbonIcon(icon, title, action);
+    }
+  }
 };
 var EasyViewSettingTab = class extends import_obsidian.PluginSettingTab {
   constructor(app, plugin) {
@@ -201,6 +258,15 @@ var EasyViewSettingTab = class extends import_obsidian.PluginSettingTab {
         this.plugin.settings.defaultFontSize = n;
         await this.plugin.saveSettings();
       }
+    }));
+    containerEl.createEl("h3", { text: "Mobile / Ribbon" });
+    new import_obsidian.Setting(containerEl).setName("Show Ribbon Icon (Mobile Only)").setDesc("Display a shortcut icon on the mobile navigation bar. This setting is ignored on desktop.").addToggle((t) => t.setValue(this.plugin.settings.showRibbonIcon).onChange(async (v) => {
+      this.plugin.settings.showRibbonIcon = v;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian.Setting(containerEl).setName("Ribbon Icon Action").setDesc("Select which feature the ribbon icon should trigger.").addDropdown((d) => d.addOption("toggle-theme", "Toggle Theme").addOption("increase-font", "Increase Font Size").addOption("decrease-font", "Decrease Font Size").addOption("reset-font", "Reset Font Size").addOption("toggle-focus", "Toggle Focus Mode").addOption("toggle-zen", "Toggle Zen Mode").addOption("cycle-mode", "Cycle Reading Mode").setValue(this.plugin.settings.ribbonAction).onChange(async (v) => {
+      this.plugin.settings.ribbonAction = v;
+      await this.plugin.saveSettings();
     }));
     containerEl.createEl("h3", { text: "Visibility" });
     new import_obsidian.Setting(containerEl).setName("Show Decrement").addToggle((t) => t.setValue(this.plugin.settings.showDecrementBtn).onChange(async (v) => {

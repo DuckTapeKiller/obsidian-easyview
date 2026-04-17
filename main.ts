@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, setIcon, Notice, Menu, MarkdownView } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, setIcon, Notice, Menu, MarkdownView, Platform } from 'obsidian';
 
 interface EasyViewSettings {
     buttonSize: number;
@@ -13,6 +13,8 @@ interface EasyViewSettings {
     focusModeActive: boolean;
     zenModeActive: boolean;
     showNotifications: boolean;
+    showRibbonIcon: boolean;
+    ribbonAction: string;
 }
 
 const DEFAULT_SETTINGS: EasyViewSettings = {
@@ -27,13 +29,16 @@ const DEFAULT_SETTINGS: EasyViewSettings = {
     showReadingModeBtn: true,
     focusModeActive: false,
     zenModeActive: false,
-    showNotifications: true
+    showNotifications: true,
+    showRibbonIcon: true,
+    ribbonAction: 'toggle-theme'
 };
 
 export default class EasyViewPlugin extends Plugin {
     settings: EasyViewSettings;
     statusBarItem: HTMLElement | null = null;
     themeBtn: HTMLElement | null = null;
+    ribbonIconEl: HTMLElement | null = null;
     isReady: boolean = false;
 
     async onload() {
@@ -42,9 +47,11 @@ export default class EasyViewPlugin extends Plugin {
         this.registerCommands();
         this.restoreStates();
         this.refreshStatusBar();
+        this.refreshRibbonIcon();
 
         this.registerEvent(this.app.workspace.on('css-change', () => {
             this.updateThemeIcon();
+            if (this.settings.ribbonAction === 'toggle-theme') this.refreshRibbonIcon();
         }));
 
         setTimeout(() => { this.isReady = true; }, 1000);
@@ -63,6 +70,7 @@ export default class EasyViewPlugin extends Plugin {
     async saveSettings() {
         await this.saveData(this.settings);
         this.refreshStatusBar();
+        this.refreshRibbonIcon();
     }
 
     notify(message: string, duration: number = 1500) {
@@ -148,6 +156,7 @@ export default class EasyViewPlugin extends Plugin {
         (this.app.vault as any).setConfig('theme', newTheme);
         (this.app as any).updateTheme();
         this.updateThemeIcon();
+        if (this.settings.ribbonAction === 'toggle-theme') this.refreshRibbonIcon();
         this.notify(`Theme: ${newTheme === 'obsidian' ? 'Dark' : 'Light'}`);
     }
 
@@ -187,6 +196,56 @@ export default class EasyViewPlugin extends Plugin {
         view.setState({ ...state, mode, source }, { history: false });
         this.notify(`Reading Mode: ${mode === 'preview' ? 'Reading' : 'Editing'}`);
     }
+ 
+    refreshRibbonIcon() {
+        if (this.ribbonIconEl) {
+            this.ribbonIconEl.remove();
+            this.ribbonIconEl = null;
+        }
+        if (this.settings.showRibbonIcon && Platform.isMobile) {
+            let icon = 'help-circle';
+            let title = 'EasyView';
+            let action = () => {};
+            switch (this.settings.ribbonAction) {
+                case 'toggle-theme':
+                    icon = (this.app.vault as any).getConfig('theme') === 'obsidian' ? 'moon' : 'sun';
+                    title = 'Toggle Theme';
+                    action = () => this.toggleTheme();
+                    break;
+                case 'increase-font':
+                    icon = 'plus';
+                    title = 'Increase Font Size';
+                    action = () => this.adjustFontSize(1);
+                    break;
+                case 'decrease-font':
+                    icon = 'minus';
+                    title = 'Decrease Font Size';
+                    action = () => this.adjustFontSize(-1);
+                    break;
+                case 'reset-font':
+                    icon = 'rotate-ccw';
+                    title = 'Reset Font Size';
+                    action = () => this.resetFontSize();
+                    break;
+                case 'toggle-focus':
+                    icon = 'maximize';
+                    title = 'Toggle Focus Mode';
+                    action = () => this.toggleFocusMode();
+                    break;
+                case 'toggle-zen':
+                    icon = 'eye-off';
+                    title = 'Toggle Zen Mode';
+                    action = () => this.toggleZenMode();
+                    break;
+                case 'cycle-mode':
+                    icon = 'book-open';
+                    title = 'Cycle Reading Mode';
+                    action = () => this.cycleReadingMode();
+                    break;
+            }
+            this.ribbonIconEl = this.addRibbonIcon(icon, title, action);
+        }
+    }
 }
 
 class EasyViewSettingTab extends PluginSettingTab {
@@ -198,6 +257,19 @@ class EasyViewSettingTab extends PluginSettingTab {
         containerEl.createEl('h2', { text: 'Easy View Settings' });
         new Setting(containerEl).setName('Button Size (px)').addSlider(s => s.setLimits(10, 24, 1).setValue(this.plugin.settings.buttonSize).onChange(async v => { this.plugin.settings.buttonSize = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Default Font Size').addText(t => t.setValue(String(this.plugin.settings.defaultFontSize)).onChange(async v => { const n = parseInt(v); if (!isNaN(n)) { this.plugin.settings.defaultFontSize = n; await this.plugin.saveSettings(); } }));
+        containerEl.createEl('h3', { text: 'Mobile / Ribbon' });
+        new Setting(containerEl).setName('Show Ribbon Icon (Mobile Only)').setDesc('Display a shortcut icon on the mobile navigation bar. This setting is ignored on desktop.').addToggle(t => t.setValue(this.plugin.settings.showRibbonIcon).onChange(async v => { this.plugin.settings.showRibbonIcon = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Ribbon Icon Action').setDesc('Select which feature the ribbon icon should trigger.').addDropdown(d => d
+            .addOption('toggle-theme', 'Toggle Theme')
+            .addOption('increase-font', 'Increase Font Size')
+            .addOption('decrease-font', 'Decrease Font Size')
+            .addOption('reset-font', 'Reset Font Size')
+            .addOption('toggle-focus', 'Toggle Focus Mode')
+            .addOption('toggle-zen', 'Toggle Zen Mode')
+            .addOption('cycle-mode', 'Cycle Reading Mode')
+            .setValue(this.plugin.settings.ribbonAction)
+            .onChange(async v => { this.plugin.settings.ribbonAction = v; await this.plugin.saveSettings(); }));
+
         containerEl.createEl('h3', { text: 'Visibility' });
         new Setting(containerEl).setName('Show Decrement').addToggle(t => t.setValue(this.plugin.settings.showDecrementBtn).onChange(async v => { this.plugin.settings.showDecrementBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show Increment').addToggle(t => t.setValue(this.plugin.settings.showIncrementBtn).onChange(async v => { this.plugin.settings.showIncrementBtn = v; await this.plugin.saveSettings(); }));
