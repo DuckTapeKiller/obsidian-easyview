@@ -71,6 +71,10 @@ export default class EasyViewPlugin extends Plugin {
         this.registerEvent(this.app.workspace.on('active-leaf-change', () => {
             this.updateModeIcon();
         }));
+
+        this.registerEvent(this.app.workspace.on('layout-change', () => {
+            this.updateModeIcon();
+        }));
     }
 
     onunload() {
@@ -287,7 +291,7 @@ export default class EasyViewPlugin extends Plugin {
         this.notify(`Zen Mode: ${isActive ? 'ON' : 'OFF'}`);
     }
 
-    cycleReadingMode() {
+    async cycleReadingMode() {
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (!view) return;
         const state = view.getState();
@@ -302,7 +306,7 @@ export default class EasyViewPlugin extends Plugin {
             mode = 'preview'; source = false; label = 'Reading';
         }
 
-        view.setState({ ...state, mode, source }, { history: false });
+        await view.setState({ ...state, mode, source }, { history: false });
         this.updateModeIcon();
         this.notify(`Mode: ${label}`);
     }
