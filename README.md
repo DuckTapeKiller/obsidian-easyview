@@ -2,7 +2,7 @@
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/ducktapekiller)
 
-**Easy View** is a minimalist status bar utility for Obsidian that provides instant control over your writing environment. Adjust font sizes, toggle themes, switch between focus modes, and manage your layout—all from the status bar, ribbon menu (on mobile), or via keyboard shortcuts.
+**Easy View** is a minimalist status bar utility for Obsidian that provides instant control over your writing environment. Adjust font sizes, toggle themes, switch between focus modes, and manage your layout—all from the status bar, right-click context menu, ribbon menu (on mobile), or via keyboard shortcuts.
 
 ---
 
@@ -30,9 +30,9 @@ Easy View places convenient buttons in the Obsidian status bar for one-click acc
 | **Increase Font Size** | `+` | Increases the global font size by 1px |
 | **Reset Font Size** | `↺` | Returns font size to your configured default (Default: 18px) |
 | **Toggle Theme** | `☀` / `☾` | Switches between Light and Dark mode |
-| **Cycle Reading Mode** | `📖` | Cycles through Source, Live Preview, and Reading View |
+| **Cycle Reading Mode** | `▤` | Cycles through Source, Live Preview, and Reading View |
 | **Toggle Focus Mode** | `◎` | Hides sidebars and ribbon |
-| **Toggle Zen Mode** | `👁` | Ultra focus—hides everything except content |
+| **Toggle Zen Mode** | `◉` | Ultra focus—hides everything except content |
 
 All buttons can be individually enabled or disabled in the plugin settings.
 
@@ -40,9 +40,6 @@ All buttons can be individually enabled or disabled in the plugin settings.
 
 ## Mobile Support
 
-Easy View is mobile-optimized to ensure your preferred actions are always accessible:
-
-### Navigation Bar Shortcut
 Since mobile devices lack a status bar, Easy View adds a shortcut icon directly to the **Mobile Navigation Bar menu** (accessible via the three-line "hamburger" icon at the bottom right).
 
 - **Always Accessible**: The shortcut is enabled by default.
@@ -51,8 +48,6 @@ Since mobile devices lack a status bar, Easy View adds a shortcut icon directly 
 ---
 
 ## Focus Modes
-
-Easy View provides two focus modes for distraction-free writing:
 
 ### Focus Mode
 
@@ -64,7 +59,7 @@ Hides peripheral UI elements while keeping navigation accessible:
 - ✓ Keeps tab headers visible
 - ✓ Keeps status bar visible
 
-On macOS, the tab header automatically shifts to avoid the window control buttons (close, minimize, maximize).
+On macOS, the tab header automatically shifts to avoid the window control buttons.
 
 ### Zen Mode
 
@@ -82,13 +77,11 @@ Only your content remains visible. Perfect for deep writing sessions.
 
 ## Reading Mode Toggle
 
-Quickly switch between Obsidian's three editing modes:
+Each click advances to the next mode in the cycle:
 
 1. **Source Mode** → Raw markdown with full editing control
 2. **Live Preview** → WYSIWYG editing with rendered formatting
 3. **Reading View** → Clean rendered view for reading
-
-Each click advances to the next mode in the cycle.
 
 ---
 
@@ -110,16 +103,19 @@ All Easy View features are accessible via Obsidian's **Command Palette** (`Cmd/C
 
 ## Right-Click Context Menu
 
-Right-click anywhere on the Easy View status bar buttons to open a quick-access context menu.
+Right-click anywhere on the Easy View status bar to open a quick-access context menu. The menu is fully configurable — you choose which items appear via **Settings → Easy View → Context Menu**.
 
-The menu provides:
+Available items:
 
-- **Toggle Options** with checkmarks (✓) showing current state
-  - Focus Mode
-  - Zen Mode
-- **Quick Actions**
-  - Reading Mode cycle
-  - Theme toggle
+- **Focus Mode** — toggles with a ✓ checkmark when active
+- **Zen Mode** — toggles with a ✓ checkmark when active
+- **Cycle Reading Mode**
+- **Toggle Theme**
+- **Increase Font Size**
+- **Decrease Font Size**
+- **Reset Font Size**
+
+This means you can keep just one button in the status bar and access everything else via right-click.
 
 ---
 
@@ -149,38 +145,36 @@ Access the Easy View settings via **Settings → Easy View**.
 ### Mobile / Ribbon
 
 - **Show Ribbon Icon (Mobile Only)**: Display a shortcut icon on the mobile navigation bar.
-- **Ribbon Icon Action**: Select which feature the shortcut should trigger (Toggle Theme, Increase/Decrease Font, Focus, etc.).
+- **Ribbon Icon Action**: Select which feature the shortcut should trigger.
 
 ### Visibility
 
-Toggle any interface element on or off:
+Toggle status bar buttons on or off individually:
 
 - Show Decrement (−)
 - Show Increment (+)
 - Show Reset (↺)
 - Show Theme (☀/☾)
 - Show Focus (◎)
-- Show View Switcher (📖)
-- Show Zen (👁)
+- Show View Switcher (▤)
+- Show Zen (◉)
+
+### Context Menu
+
+Choose which items appear when you right-click the status bar. Independent from the Visibility settings — you can hide a button from the status bar but still have it accessible via the context menu.
 
 ---
 
 ## Visual Design
 
-Easy View is designed to integrate seamlessly with Obsidian:
-
 - **Native Icons**: Uses Obsidian's Lucide icon set for consistent appearance
 - **Theme Adaptation**: Button backgrounds match your theme's primary background
-- **Subtle Interactions**:
-  - Light Mode: Icons become bolder on hover
-  - Dark Mode: Icons become lighter on hover
+- **Subtle Interactions**: Icons become bolder on hover in light mode, lighter in dark mode
 - **Clean Separators**: Thin borders between buttons for visual grouping
 
 ---
 
 ## Installation
-
-### Manual Installation
 
 1. Download the latest release from the [GitHub Releases](https://github.com/DuckTapeKiller/obsidian-easyview/releases) page
 2. Extract `main.js`, `manifest.json`, and `styles.css`
@@ -189,11 +183,7 @@ Easy View is designed to integrate seamlessly with Obsidian:
 5. Reload Obsidian
 6. Enable "Easy View" in **Settings → Community Plugins**
 
----
-
-## Requirements
-
-- Obsidian v1.0.0 or higher
+**Requirements**: Obsidian v1.0.0 or higher
 
 ---
 
