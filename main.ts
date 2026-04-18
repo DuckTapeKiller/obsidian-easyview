@@ -59,7 +59,6 @@ export default class EasyViewPlugin extends Plugin {
 
     onunload() {
         if (this.statusBarItem) this.statusBarItem.remove();
-        /* Only clean up the classes that this plugin actually toggles */
         document.body.classList.remove('easyview-focus-mode', 'easyview-zen-mode');
     }
 
@@ -191,12 +190,24 @@ export default class EasyViewPlugin extends Plugin {
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (!view) return;
         const state = view.getState();
-        let mode = state.mode === 'source' && (state.source ?? true) ? 'source' : (state.mode === 'preview' ? 'source' : 'preview');
-        let source = state.mode === 'source' && (state.source ?? true) ? false : (state.mode === 'preview' ? true : false);
+
+        let mode: string, source: boolean, label: string;
+
+        if (state.mode === 'preview') {
+            // Reading → Source
+            mode = 'source'; source = true; label = 'Source';
+        } else if (state.source === true) {
+            // Source → Live Preview
+            mode = 'source'; source = false; label = 'Live Preview';
+        } else {
+            // Live Preview → Reading
+            mode = 'preview'; source = false; label = 'Reading';
+        }
+
         view.setState({ ...state, mode, source }, { history: false });
-        this.notify(`Reading Mode: ${mode === 'preview' ? 'Reading' : 'Editing'}`);
+        this.notify(`Mode: ${label}`);
     }
- 
+
     refreshRibbonIcon() {
         if (this.ribbonIconEl) {
             this.ribbonIconEl.remove();
@@ -277,7 +288,7 @@ class EasyViewSettingTab extends PluginSettingTab {
         new Setting(containerEl).setName('Show Theme').addToggle(t => t.setValue(this.plugin.settings.showThemeBtn).onChange(async v => { this.plugin.settings.showThemeBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show Focus').addToggle(t => t.setValue(this.plugin.settings.showFocusBtn).onChange(async v => { this.plugin.settings.showFocusBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show View Switcher').setDesc('Reader / Editing / Source').addToggle(t => t.setValue(this.plugin.settings.showReadingModeBtn).onChange(async v => { this.plugin.settings.showReadingModeBtn = v; await this.plugin.saveSettings(); }));
-        
+
         containerEl.createEl('h3', { text: 'Features' });
         new Setting(containerEl).setName('Show Zen').addToggle(t => t.setValue(this.plugin.settings.showZenBtn).onChange(async v => { this.plugin.settings.showZenBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show Action Tooltips').setDesc('Show a notification popup when an action (e.g., resizing font) is performed.').addToggle(t => t.setValue(this.plugin.settings.showNotifications).onChange(async v => { this.plugin.settings.showNotifications = v; await this.plugin.saveSettings(); }));
