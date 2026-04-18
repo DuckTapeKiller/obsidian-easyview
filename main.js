@@ -43,7 +43,14 @@ var DEFAULT_SETTINGS = {
   zenModeActive: false,
   showNotifications: true,
   showRibbonIcon: true,
-  ribbonAction: "toggle-theme"
+  ribbonAction: "toggle-theme",
+  contextMenuFocus: true,
+  contextMenuZen: true,
+  contextMenuReadingMode: true,
+  contextMenuTheme: true,
+  contextMenuIncreaseFont: false,
+  contextMenuDecreaseFont: false,
+  contextMenuResetFont: false
 };
 var EasyViewPlugin = class extends import_obsidian.Plugin {
   constructor() {
@@ -51,7 +58,6 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     this.statusBarItem = null;
     this.themeBtn = null;
     this.ribbonIconEl = null;
-    this.isReady = false;
   }
   async onload() {
     await this.loadSettings();
@@ -64,9 +70,6 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
       this.updateThemeIcon();
       if (this.settings.ribbonAction === "toggle-theme") this.refreshRibbonIcon();
     }));
-    setTimeout(() => {
-      this.isReady = true;
-    }, 1e3);
   }
   onunload() {
     if (this.statusBarItem) this.statusBarItem.remove();
@@ -101,6 +104,7 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
   refreshStatusBar() {
     if (this.statusBarItem) this.statusBarItem.empty();
     else this.statusBarItem = this.addStatusBarItem();
+    this.themeBtn = null;
     this.statusBarItem.addClass("plugin-easyview", "easy-view-container-unique");
     this.statusBarItem.style.setProperty("--easy-view-btn-size", `${this.settings.buttonSize}px`);
     this.statusBarItem.oncontextmenu = (e) => {
@@ -127,11 +131,39 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
   }
   showContextMenu(e) {
     const menu = new import_obsidian.Menu();
-    menu.addItem((i) => i.setTitle(this.settings.focusModeActive ? "\u2713 Focus" : "Focus").setIcon("maximize").onClick(() => this.toggleFocusMode()));
-    menu.addItem((i) => i.setTitle(this.settings.zenModeActive ? "\u2713 Zen" : "Zen").setIcon("eye-off").onClick(() => this.toggleZenMode()));
-    menu.addSeparator();
-    menu.addItem((i) => i.setTitle("Toggle Theme").setIcon("sun").onClick(() => this.toggleTheme()));
-    menu.showAtMouseEvent(e);
+    let hasItems = false;
+    if (this.settings.contextMenuFocus) {
+      menu.addItem((i) => i.setTitle(this.settings.focusModeActive ? "\u2713 Focus Mode" : "Focus Mode").setIcon("maximize").onClick(() => this.toggleFocusMode()));
+      hasItems = true;
+    }
+    if (this.settings.contextMenuZen) {
+      menu.addItem((i) => i.setTitle(this.settings.zenModeActive ? "\u2713 Zen Mode" : "Zen Mode").setIcon("eye-off").onClick(() => this.toggleZenMode()));
+      hasItems = true;
+    }
+    const hasStateful = this.settings.contextMenuFocus || this.settings.contextMenuZen;
+    const hasActions = this.settings.contextMenuReadingMode || this.settings.contextMenuTheme || this.settings.contextMenuIncreaseFont || this.settings.contextMenuDecreaseFont || this.settings.contextMenuResetFont;
+    if (hasStateful && hasActions) menu.addSeparator();
+    if (this.settings.contextMenuReadingMode) {
+      menu.addItem((i) => i.setTitle("Cycle Reading Mode").setIcon("book-open").onClick(() => this.cycleReadingMode()));
+      hasItems = true;
+    }
+    if (this.settings.contextMenuTheme) {
+      menu.addItem((i) => i.setTitle("Toggle Theme").setIcon("sun").onClick(() => this.toggleTheme()));
+      hasItems = true;
+    }
+    if (this.settings.contextMenuIncreaseFont) {
+      menu.addItem((i) => i.setTitle("Increase Font Size").setIcon("plus").onClick(() => this.adjustFontSize(1)));
+      hasItems = true;
+    }
+    if (this.settings.contextMenuDecreaseFont) {
+      menu.addItem((i) => i.setTitle("Decrease Font Size").setIcon("minus").onClick(() => this.adjustFontSize(-1)));
+      hasItems = true;
+    }
+    if (this.settings.contextMenuResetFont) {
+      menu.addItem((i) => i.setTitle("Reset Font Size").setIcon("rotate-ccw").onClick(() => this.resetFontSize()));
+      hasItems = true;
+    }
+    if (hasItems) menu.showAtMouseEvent(e);
   }
   adjustFontSize(change) {
     const currentSize = this.app.vault.getConfig("baseFontSize") || 16;
@@ -182,20 +214,14 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     const view = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
     if (!view) return;
     const state = view.getState();
-
     let mode, source, label;
-
     if (state.mode === "preview") {
-      // Reading → Source
       mode = "source"; source = true; label = "Source";
     } else if (state.source === true) {
-      // Source → Live Preview
       mode = "source"; source = false; label = "Live Preview";
     } else {
-      // Live Preview → Reading
       mode = "preview"; source = false; label = "Reading";
     }
-
     view.setState({ ...state, mode, source }, { history: false });
     this.notify(`Mode: ${label}`);
   }
@@ -311,6 +337,36 @@ var EasyViewSettingTab = class extends import_obsidian.PluginSettingTab {
     }));
     new import_obsidian.Setting(containerEl).setName("Show Action Tooltips").setDesc("Show a notification popup when an action (e.g., resizing font) is performed.").addToggle((t) => t.setValue(this.plugin.settings.showNotifications).onChange(async (v) => {
       this.plugin.settings.showNotifications = v;
+      await this.plugin.saveSettings();
+    }));
+    containerEl.createEl("h3", { text: "Context Menu" });
+    containerEl.createEl("p", { text: "Choose which items appear when you right-click the status bar.", cls: "setting-item-description" });
+    new import_obsidian.Setting(containerEl).setName("Focus Mode").addToggle((t) => t.setValue(this.plugin.settings.contextMenuFocus).onChange(async (v) => {
+      this.plugin.settings.contextMenuFocus = v;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian.Setting(containerEl).setName("Zen Mode").addToggle((t) => t.setValue(this.plugin.settings.contextMenuZen).onChange(async (v) => {
+      this.plugin.settings.contextMenuZen = v;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian.Setting(containerEl).setName("Cycle Reading Mode").addToggle((t) => t.setValue(this.plugin.settings.contextMenuReadingMode).onChange(async (v) => {
+      this.plugin.settings.contextMenuReadingMode = v;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian.Setting(containerEl).setName("Toggle Theme").addToggle((t) => t.setValue(this.plugin.settings.contextMenuTheme).onChange(async (v) => {
+      this.plugin.settings.contextMenuTheme = v;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian.Setting(containerEl).setName("Increase Font Size").addToggle((t) => t.setValue(this.plugin.settings.contextMenuIncreaseFont).onChange(async (v) => {
+      this.plugin.settings.contextMenuIncreaseFont = v;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian.Setting(containerEl).setName("Decrease Font Size").addToggle((t) => t.setValue(this.plugin.settings.contextMenuDecreaseFont).onChange(async (v) => {
+      this.plugin.settings.contextMenuDecreaseFont = v;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian.Setting(containerEl).setName("Reset Font Size").addToggle((t) => t.setValue(this.plugin.settings.contextMenuResetFont).onChange(async (v) => {
+      this.plugin.settings.contextMenuResetFont = v;
       await this.plugin.saveSettings();
     }));
   }
