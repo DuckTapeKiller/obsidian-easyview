@@ -15,6 +15,13 @@ interface EasyViewSettings {
     showNotifications: boolean;
     showRibbonIcon: boolean;
     ribbonAction: string;
+    contextMenuFocus: boolean;
+    contextMenuZen: boolean;
+    contextMenuReadingMode: boolean;
+    contextMenuTheme: boolean;
+    contextMenuIncreaseFont: boolean;
+    contextMenuDecreaseFont: boolean;
+    contextMenuResetFont: boolean;
 }
 
 const DEFAULT_SETTINGS: EasyViewSettings = {
@@ -31,7 +38,14 @@ const DEFAULT_SETTINGS: EasyViewSettings = {
     zenModeActive: false,
     showNotifications: true,
     showRibbonIcon: true,
-    ribbonAction: 'toggle-theme'
+    ribbonAction: 'toggle-theme',
+    contextMenuFocus: true,
+    contextMenuZen: true,
+    contextMenuReadingMode: true,
+    contextMenuTheme: true,
+    contextMenuIncreaseFont: false,
+    contextMenuDecreaseFont: false,
+    contextMenuResetFont: false
 };
 
 export default class EasyViewPlugin extends Plugin {
@@ -39,7 +53,6 @@ export default class EasyViewPlugin extends Plugin {
     statusBarItem: HTMLElement | null = null;
     themeBtn: HTMLElement | null = null;
     ribbonIconEl: HTMLElement | null = null;
-    isReady: boolean = false;
 
     async onload() {
         await this.loadSettings();
@@ -53,8 +66,6 @@ export default class EasyViewPlugin extends Plugin {
             this.updateThemeIcon();
             if (this.settings.ribbonAction === 'toggle-theme') this.refreshRibbonIcon();
         }));
-
-        setTimeout(() => { this.isReady = true; }, 1000);
     }
 
     onunload() {
@@ -97,6 +108,8 @@ export default class EasyViewPlugin extends Plugin {
         if (this.statusBarItem) this.statusBarItem.empty();
         else this.statusBarItem = this.addStatusBarItem();
 
+        this.themeBtn = null;
+
         this.statusBarItem.addClass('plugin-easyview', 'easy-view-container-unique');
         this.statusBarItem.style.setProperty('--easy-view-btn-size', `${this.settings.buttonSize}px`);
 
@@ -128,11 +141,75 @@ export default class EasyViewPlugin extends Plugin {
 
     showContextMenu(e: MouseEvent) {
         const menu = new Menu();
-        menu.addItem(i => i.setTitle(this.settings.focusModeActive ? '✓ Focus' : 'Focus').setIcon('maximize').onClick(() => this.toggleFocusMode()));
-        menu.addItem(i => i.setTitle(this.settings.zenModeActive ? '✓ Zen' : 'Zen').setIcon('eye-off').onClick(() => this.toggleZenMode()));
-        menu.addSeparator();
-        menu.addItem(i => i.setTitle('Toggle Theme').setIcon('sun').onClick(() => this.toggleTheme()));
-        menu.showAtMouseEvent(e);
+        let hasItems = false;
+
+        // Stateful toggle items (show checkmark when active)
+        if (this.settings.contextMenuFocus) {
+            menu.addItem(i => i
+                .setTitle(this.settings.focusModeActive ? '✓ Focus Mode' : 'Focus Mode')
+                .setIcon('maximize')
+                .onClick(() => this.toggleFocusMode()));
+            hasItems = true;
+        }
+
+        if (this.settings.contextMenuZen) {
+            menu.addItem(i => i
+                .setTitle(this.settings.zenModeActive ? '✓ Zen Mode' : 'Zen Mode')
+                .setIcon('eye-off')
+                .onClick(() => this.toggleZenMode()));
+            hasItems = true;
+        }
+
+        // Separator between stateful and action items (only if both groups have items)
+        const hasStateful = this.settings.contextMenuFocus || this.settings.contextMenuZen;
+        const hasActions = this.settings.contextMenuReadingMode || this.settings.contextMenuTheme ||
+            this.settings.contextMenuIncreaseFont || this.settings.contextMenuDecreaseFont ||
+            this.settings.contextMenuResetFont;
+
+        if (hasStateful && hasActions) menu.addSeparator();
+
+        // Action items
+        if (this.settings.contextMenuReadingMode) {
+            menu.addItem(i => i
+                .setTitle('Cycle Reading Mode')
+                .setIcon('book-open')
+                .onClick(() => this.cycleReadingMode()));
+            hasItems = true;
+        }
+
+        if (this.settings.contextMenuTheme) {
+            menu.addItem(i => i
+                .setTitle('Toggle Theme')
+                .setIcon('sun')
+                .onClick(() => this.toggleTheme()));
+            hasItems = true;
+        }
+
+        if (this.settings.contextMenuIncreaseFont) {
+            menu.addItem(i => i
+                .setTitle('Increase Font Size')
+                .setIcon('plus')
+                .onClick(() => this.adjustFontSize(1)));
+            hasItems = true;
+        }
+
+        if (this.settings.contextMenuDecreaseFont) {
+            menu.addItem(i => i
+                .setTitle('Decrease Font Size')
+                .setIcon('minus')
+                .onClick(() => this.adjustFontSize(-1)));
+            hasItems = true;
+        }
+
+        if (this.settings.contextMenuResetFont) {
+            menu.addItem(i => i
+                .setTitle('Reset Font Size')
+                .setIcon('rotate-ccw')
+                .onClick(() => this.resetFontSize()));
+            hasItems = true;
+        }
+
+        if (hasItems) menu.showAtMouseEvent(e);
     }
 
     adjustFontSize(change: number) {
@@ -266,8 +343,10 @@ class EasyViewSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
         containerEl.createEl('h2', { text: 'Easy View Settings' });
+
         new Setting(containerEl).setName('Button Size (px)').addSlider(s => s.setLimits(10, 24, 1).setValue(this.plugin.settings.buttonSize).onChange(async v => { this.plugin.settings.buttonSize = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Default Font Size').addText(t => t.setValue(String(this.plugin.settings.defaultFontSize)).onChange(async v => { const n = parseInt(v); if (!isNaN(n)) { this.plugin.settings.defaultFontSize = n; await this.plugin.saveSettings(); } }));
+
         containerEl.createEl('h3', { text: 'Mobile / Ribbon' });
         new Setting(containerEl).setName('Show Ribbon Icon (Mobile Only)').setDesc('Display a shortcut icon on the mobile navigation bar. This setting is ignored on desktop.').addToggle(t => t.setValue(this.plugin.settings.showRibbonIcon).onChange(async v => { this.plugin.settings.showRibbonIcon = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Ribbon Icon Action').setDesc('Select which feature the ribbon icon should trigger.').addDropdown(d => d
@@ -292,5 +371,15 @@ class EasyViewSettingTab extends PluginSettingTab {
         containerEl.createEl('h3', { text: 'Features' });
         new Setting(containerEl).setName('Show Zen').addToggle(t => t.setValue(this.plugin.settings.showZenBtn).onChange(async v => { this.plugin.settings.showZenBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show Action Tooltips').setDesc('Show a notification popup when an action (e.g., resizing font) is performed.').addToggle(t => t.setValue(this.plugin.settings.showNotifications).onChange(async v => { this.plugin.settings.showNotifications = v; await this.plugin.saveSettings(); }));
+
+        containerEl.createEl('h3', { text: 'Context Menu' });
+        containerEl.createEl('p', { text: 'Choose which items appear when you right-click the status bar.', cls: 'setting-item-description' });
+        new Setting(containerEl).setName('Focus Mode').addToggle(t => t.setValue(this.plugin.settings.contextMenuFocus).onChange(async v => { this.plugin.settings.contextMenuFocus = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Zen Mode').addToggle(t => t.setValue(this.plugin.settings.contextMenuZen).onChange(async v => { this.plugin.settings.contextMenuZen = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Cycle Reading Mode').addToggle(t => t.setValue(this.plugin.settings.contextMenuReadingMode).onChange(async v => { this.plugin.settings.contextMenuReadingMode = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Toggle Theme').addToggle(t => t.setValue(this.plugin.settings.contextMenuTheme).onChange(async v => { this.plugin.settings.contextMenuTheme = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Increase Font Size').addToggle(t => t.setValue(this.plugin.settings.contextMenuIncreaseFont).onChange(async v => { this.plugin.settings.contextMenuIncreaseFont = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Decrease Font Size').addToggle(t => t.setValue(this.plugin.settings.contextMenuDecreaseFont).onChange(async v => { this.plugin.settings.contextMenuDecreaseFont = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Reset Font Size').addToggle(t => t.setValue(this.plugin.settings.contextMenuResetFont).onChange(async v => { this.plugin.settings.contextMenuResetFont = v; await this.plugin.saveSettings(); }));
     }
 }
