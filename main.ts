@@ -52,6 +52,7 @@ export default class EasyViewPlugin extends Plugin {
     settings: EasyViewSettings;
     statusBarItem: HTMLElement | null = null;
     themeBtn: HTMLElement | null = null;
+    modeBtn: HTMLElement | null = null;
     ribbonIconEl: HTMLElement | null = null;
 
     async onload() {
@@ -65,6 +66,10 @@ export default class EasyViewPlugin extends Plugin {
         this.registerEvent(this.app.workspace.on('css-change', () => {
             this.updateThemeIcon();
             if (this.settings.ribbonAction === 'toggle-theme') this.refreshRibbonIcon();
+        }));
+
+        this.registerEvent(this.app.workspace.on('active-leaf-change', () => {
+            this.updateModeIcon();
         }));
     }
 
@@ -109,6 +114,7 @@ export default class EasyViewPlugin extends Plugin {
         else this.statusBarItem = this.addStatusBarItem();
 
         this.themeBtn = null;
+        this.modeBtn = null;
 
         this.statusBarItem.addClass('plugin-easyview', 'easy-view-container-unique');
         this.statusBarItem.style.setProperty('--easy-view-btn-size', `${this.settings.buttonSize}px`);
@@ -121,7 +127,10 @@ export default class EasyViewPlugin extends Plugin {
         if (this.settings.showDecrementBtn) this.createBtn('minus', "Decrease", () => this.adjustFontSize(-1));
         if (this.settings.showIncrementBtn) this.createBtn('plus', "Increase", () => this.adjustFontSize(1));
         if (this.settings.showResetBtn) this.createBtn('rotate-ccw', "Reset", () => this.resetFontSize());
-        if (this.settings.showReadingModeBtn) this.createBtn('book-open', "Mode", () => this.cycleReadingMode());
+        if (this.settings.showReadingModeBtn) {
+            this.modeBtn = this.createBtn('book-open', "Mode", () => this.cycleReadingMode());
+            this.updateModeIcon();
+        }
         if (this.settings.showFocusBtn) this.createBtn('maximize', "Focus", () => this.toggleFocusMode());
         if (this.settings.showZenBtn) this.createBtn('eye-off', "Zen", () => this.toggleZenMode());
 
@@ -143,7 +152,6 @@ export default class EasyViewPlugin extends Plugin {
         const menu = new Menu();
         let hasItems = false;
 
-        // Stateful toggle items (show checkmark when active)
         if (this.settings.contextMenuFocus) {
             menu.addItem(i => i
                 .setTitle(this.settings.focusModeActive ? '✓ Focus Mode' : 'Focus Mode')
@@ -160,7 +168,6 @@ export default class EasyViewPlugin extends Plugin {
             hasItems = true;
         }
 
-        // Separator between stateful and action items (only if both groups have items)
         const hasStateful = this.settings.contextMenuFocus || this.settings.contextMenuZen;
         const hasActions = this.settings.contextMenuReadingMode || this.settings.contextMenuTheme ||
             this.settings.contextMenuIncreaseFont || this.settings.contextMenuDecreaseFont ||
@@ -168,7 +175,6 @@ export default class EasyViewPlugin extends Plugin {
 
         if (hasStateful && hasActions) menu.addSeparator();
 
-        // Action items
         if (this.settings.contextMenuReadingMode) {
             menu.addItem(i => i
                 .setTitle('Cycle Reading Mode')
@@ -241,6 +247,23 @@ export default class EasyViewPlugin extends Plugin {
         setIcon(this.themeBtn, (this.app.vault as any).getConfig('theme') === 'obsidian' ? 'moon' : 'sun');
     }
 
+    updateModeIcon() {
+        if (!this.modeBtn) return;
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!view) return;
+        const state = view.getState();
+        if (state.mode === 'preview') {
+            this.modeBtn.setText('▤');
+            this.modeBtn.title = 'Reading View';
+        } else if (state.source === true) {
+            this.modeBtn.setText('¶');
+            this.modeBtn.title = 'Source Mode';
+        } else {
+            this.modeBtn.setText('◈');
+            this.modeBtn.title = 'Live Preview';
+        }
+    }
+
     toggleFocusMode() {
         if (!this.settings.focusModeActive && this.settings.zenModeActive) {
             document.body.classList.remove('easyview-zen-mode');
@@ -271,17 +294,15 @@ export default class EasyViewPlugin extends Plugin {
         let mode: string, source: boolean, label: string;
 
         if (state.mode === 'preview') {
-            // Reading → Source
             mode = 'source'; source = true; label = 'Source';
         } else if (state.source === true) {
-            // Source → Live Preview
             mode = 'source'; source = false; label = 'Live Preview';
         } else {
-            // Live Preview → Reading
             mode = 'preview'; source = false; label = 'Reading';
         }
 
         view.setState({ ...state, mode, source }, { history: false });
+        this.updateModeIcon();
         this.notify(`Mode: ${label}`);
     }
 
