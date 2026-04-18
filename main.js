@@ -179,14 +179,25 @@ var EasyViewPlugin = class extends import_obsidian.Plugin {
     this.notify(`Zen Mode: ${isActive ? "ON" : "OFF"}`);
   }
   cycleReadingMode() {
-    var _a, _b;
     const view = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
     if (!view) return;
     const state = view.getState();
-    let mode = state.mode === "source" && ((_a = state.source) != null ? _a : true) ? "source" : state.mode === "preview" ? "source" : "preview";
-    let source = state.mode === "source" && ((_b = state.source) != null ? _b : true) ? false : state.mode === "preview" ? true : false;
+
+    let mode, source, label;
+
+    if (state.mode === "preview") {
+      // Reading → Source
+      mode = "source"; source = true; label = "Source";
+    } else if (state.source === true) {
+      // Source → Live Preview
+      mode = "source"; source = false; label = "Live Preview";
+    } else {
+      // Live Preview → Reading
+      mode = "preview"; source = false; label = "Reading";
+    }
+
     view.setState({ ...state, mode, source }, { history: false });
-    this.notify(`Reading Mode: ${mode === "preview" ? "Reading" : "Editing"}`);
+    this.notify(`Mode: ${label}`);
   }
   refreshRibbonIcon() {
     if (this.ribbonIconEl) {
