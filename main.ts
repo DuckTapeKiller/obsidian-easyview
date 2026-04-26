@@ -23,8 +23,8 @@ interface EasyViewSettings {
     contextMenuDecreaseFont: boolean;
     contextMenuResetFont: boolean;
     deleteWithAttachments: boolean;
-    showHistoryBtn: boolean;
-    historySize: number;
+    showBtn: boolean;
+    Size: number;
     recentNotes: string[];
     contextMenuHistory: boolean;
     showMobileHistoryIcon: boolean;
@@ -250,6 +250,7 @@ export default class EasyViewPlugin extends Plugin {
         this.addCommand({
             id: 'recent-notes-history',
             name: 'Open recent notes',
+            icon: 'cone',
             callback: () => {
                 if (this.settings.recentNotes.length > 0) {
                     this.openRecentNotes();
@@ -282,7 +283,7 @@ export default class EasyViewPlugin extends Plugin {
             this.showContextMenu(e);
         };
 
-        if (this.settings.showHistoryBtn) this.createBtn('history', "Recent Notes", () => this.openRecentNotes());
+        if (this.settings.showHistoryBtn) this.createBtn('cone', "Recent Notes", () => this.openRecentNotes());
         if (this.settings.showDecrementBtn) this.createBtn('minus', "Decrease", () => this.adjustFontSize(-1));
         if (this.settings.showIncrementBtn) this.createBtn('plus', "Increase", () => this.adjustFontSize(1));
         if (this.settings.showResetBtn) this.createBtn('rotate-ccw', "Reset", () => this.resetFontSize());
@@ -388,7 +389,7 @@ export default class EasyViewPlugin extends Plugin {
             if (hasItems) menu.addSeparator();
             menu.addItem(i => i
                 .setTitle('Recent notes…')
-                .setIcon('history')
+                .setIcon('cone')
                 .onClick(() => this.openRecentNotes()));
             hasItems = true;
         }
@@ -565,7 +566,7 @@ export default class EasyViewPlugin extends Plugin {
         const iconWrapper = this.mobileNavbarHistoryBtn.createEl('span', {
             cls: 'clickable-icon'
         });
-        setIcon(iconWrapper, 'history');
+        setIcon(iconWrapper, 'cone');
 
         this.registerDomEvent(this.mobileNavbarHistoryBtn, 'click', () => this.openRecentNotes());
         this.registerDomEvent(this.mobileNavbarHistoryBtn, 'keydown', (event: KeyboardEvent) => {
