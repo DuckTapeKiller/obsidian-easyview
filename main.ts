@@ -250,7 +250,7 @@ export default class EasyViewPlugin extends Plugin {
         this.addCommand({
             id: 'recent-notes-history',
             name: 'Open recent notes',
-            icon: 'cone',
+            icon: 'spool',
             callback: () => {
                 if (this.settings.recentNotes.length > 0) {
                     this.openRecentNotes();
@@ -283,7 +283,7 @@ export default class EasyViewPlugin extends Plugin {
             this.showContextMenu(e);
         };
 
-        if (this.settings.showHistoryBtn) this.createBtn('cone', "Recent Notes", () => this.openRecentNotes());
+        if (this.settings.showHistoryBtn) this.createBtn('spool', "Recent Notes", () => this.openRecentNotes());
         if (this.settings.showDecrementBtn) this.createBtn('minus', "Decrease", () => this.adjustFontSize(-1));
         if (this.settings.showIncrementBtn) this.createBtn('plus', "Increase", () => this.adjustFontSize(1));
         if (this.settings.showResetBtn) this.createBtn('rotate-ccw', "Reset", () => this.resetFontSize());
@@ -389,7 +389,7 @@ export default class EasyViewPlugin extends Plugin {
             if (hasItems) menu.addSeparator();
             menu.addItem(i => i
                 .setTitle('Recent notes…')
-                .setIcon('cone')
+                .setIcon('spool')
                 .onClick(() => this.openRecentNotes()));
             hasItems = true;
         }
@@ -566,7 +566,7 @@ export default class EasyViewPlugin extends Plugin {
         const iconWrapper = this.mobileNavbarHistoryBtn.createEl('span', {
             cls: 'clickable-icon'
         });
-        setIcon(iconWrapper, 'cone');
+        setIcon(iconWrapper, 'spool');
 
         this.registerDomEvent(this.mobileNavbarHistoryBtn, 'click', () => this.openRecentNotes());
         this.registerDomEvent(this.mobileNavbarHistoryBtn, 'keydown', (event: KeyboardEvent) => {
