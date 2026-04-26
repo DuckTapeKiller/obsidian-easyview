@@ -1,0 +1,273 @@
+/* EasyView Plugin Styles - Corrected Mobile Navbar */
+
+/* NO HOVER BACKGROUNDS ON CONTAINER */
+body .status-bar-item.plugin-easyview,
+body .status-bar-item.easy-view-container-unique {
+    padding: 0 !important;
+    gap: 0 !important;
+    background-color: var(--background-primary) !important;
+}
+
+body .status-bar-item.plugin-easyview:hover,
+body .status-bar-item.easy-view-container-unique:hover {
+    background-color: var(--background-primary) !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* BUTTON STYLES */
+.easy-view-btn {
+    border: none !important;
+    border-right: 1px solid var(--background-modifier-border) !important;
+    box-shadow: none !important;
+    color: var(--text-muted) !important;
+    font-weight: normal;
+    cursor: pointer;
+    font-family: var(--font-interface);
+    background-color: transparent !important;
+    font-size: var(--easy-view-btn-size, 13px);
+    height: auto;
+    min-height: calc(var(--easy-view-btn-size, 13px) * 2);
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    margin: 0;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    line-height: 1;
+    border-radius: 0 !important;
+    box-sizing: border-box;
+}
+
+.easy-view-btn:last-child {
+    border-right: none !important;
+}
+
+body.theme-light .easy-view-btn:hover {
+    background-color: transparent !important;
+    color: var(--text-normal) !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+body.theme-dark .easy-view-btn:hover {
+    background-color: transparent !important;
+    color: #d1d1d1 !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+.easy-view-btn.is-active {
+    color: var(--text-accent) !important;
+    background-color: var(--background-modifier-hover) !important;
+}
+
+/* Ensure active state persists on hover */
+body.theme-light .easy-view-btn.is-active:hover,
+body.theme-dark .easy-view-btn.is-active:hover {
+    background-color: var(--background-modifier-hover) !important;
+    color: var(--text-accent) !important;
+}
+
+/* FOCUS MODE */
+body.easyview-focus-mode .workspace-ribbon,
+body.easyview-focus-mode .workspace-split.mod-left-split,
+body.easyview-focus-mode .workspace-split.mod-right-split {
+    display: none !important;
+}
+
+body.easyview-focus-mode .workspace-tab-header-container {
+    padding-left: 72px !important;
+}
+
+body.easyview-focus-mode .titlebar-button-container {
+    margin-left: 72px !important;
+}
+
+body.mod-mac.easyview-focus-mode .view-header-nav-buttons,
+body.mod-mac.easyview-zen-mode .view-header-nav-buttons {
+    margin-left: 85px !important;
+    -webkit-app-region: no-drag;
+}
+
+/* ZEN MODE */
+body.easyview-zen-mode .workspace-ribbon,
+body.easyview-zen-mode .workspace-split.mod-left-split,
+body.easyview-zen-mode .workspace-split.mod-right-split,
+body.easyview-zen-mode .workspace-tab-header-container,
+body.easyview-zen-mode .titlebar {
+    display: none !important;
+}
+
+body.easyview-zen-mode .status-bar {
+    display: flex !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    z-index: 1000 !important;
+    background-color: var(--background-primary) !important;
+    opacity: 0 !important;
+    transition: opacity 0.3s ease-in-out !important;
+}
+
+/* Allow status bar to be visible on mobile in Zen Mode via tap-reveal or constant visibility */
+body.mod-mobile.easyview-zen-mode .status-bar,
+body.is-mobile.easyview-zen-mode .status-bar {
+    opacity: 0.8 !important; /* Semi-transparent on mobile to allow exit */
+}
+
+body.easyview-zen-mode .status-bar:hover {
+    opacity: 1 !important;
+}
+
+body.easyview-zen-mode .workspace-leaf-content {
+    padding-top: 0 !important;
+}
+
+body.easyview-zen-mode .view-content {
+    padding-top: 28px !important;
+}
+
+body.easyview-zen-mode .workspace-tabs {
+    padding-top: 0 !important;
+}
+
+/* HIDE NATIVE VIEW SWITCHER */
+.status-bar-item.plugin-editor-status {
+    display: none !important;
+}
+
+/* ── Delete with Attachments Modal ─────────────────────── */
+.dwa-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.dwa-image-list {
+    margin: 6px 0 12px 24px;
+    font-size: 0.9em;
+    color: var(--text-muted);
+}
+
+.dwa-no-images {
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: 8px;
+}
+
+.dwa-button-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+/* ── Recent Notes Modal ─────────────────────────────────── */
+.recent-note-item {
+    padding: 6px 10px;
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    font-size: 0.95em;
+    display: block;
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    transition: none !important;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.4;
+    height: auto;
+}
+
+.recent-note-item:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+
+
+.recent-note-item--deleted {
+    color: var(--text-muted);
+    cursor: default;
+    font-style: italic;
+    padding: 6px 10px;
+    font-size: 0.95em;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.4;
+}
+
+/* ── NUCLEAR OPTION: KILL ALL MODAL ANIMATIONS ── */
+.easyview-recent-notes-container,
+.easyview-recent-notes-container *,
+.easyview-recent-notes-modal,
+.easyview-recent-notes-modal * {
+    transition: none !important;
+    transition-duration: 0s !important;
+    animation: none !important;
+    animation-duration: 0s !important;
+    transform: none !important;
+}
+
+/* Specifically target Obsidian's mobile slide-down and fade effects */
+.modal-container.easyview-recent-notes-container .modal,
+.modal-container.easyview-recent-notes-container .modal-bg {
+    transition: none !important;
+    transition-duration: 0s !important;
+    animation: none !important;
+    animation-duration: 0s !important;
+    transform: none !important;
+    opacity: 1 !important;
+}
+
+/* Force instant removal when Obsidian starts the closing process */
+.modal-container.is-closing.easyview-recent-notes-container,
+.modal-container.is-closing:has(.easyview-recent-notes-modal) {
+    display: none !important;
+}
+
+/* ── OPTION B: Mobile Navbar Fix ───────────────────────── */
+
+/* Hide forward button */
+.easyview-has-history-icon .mobile-navbar-action-forward {
+    display: none !important;
+}
+
+/* Force History icon to take over the 'auto-margin' duty */
+.easyview-has-history-icon .easyview-mobile-history {
+    margin-left: auto !important;
+    flex: 0 0 auto !important;
+}
+
+/* Remove margin from native Menu button so it sits next to History */
+.easyview-has-history-icon .mobile-navbar-action-menu {
+    margin-left: 0 !important;
+}
+
+/* Force Square Uniformity & Fluid Height */
+.easyview-mobile-history {
+    width: 48px !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    overflow: hidden !important;
+}
+
+.easyview-mobile-history .clickable-icon {
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+.easyview-mobile-history .svg-icon {
+    width: 26px !important;
+    height: 26px !important;
+}
