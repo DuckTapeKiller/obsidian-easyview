@@ -43,10 +43,11 @@ All buttons can be individually enabled or disabled in the plugin settings.
 
 ## Mobile Support
 
-Since mobile devices lack a status bar, Easy View adds a shortcut icon directly to the **Mobile Navigation Bar menu** (accessible via the three-line "hamburger" icon at the bottom right).
+Since mobile devices lack a status bar, Easy View integrates directly into the **Mobile Navigation Bar**:
 
-- **Always Accessible**: The shortcut is enabled by default.
-- **Configurable**: You can select **ONE** primary action for this shortcut (e.g., Theme Toggle, Font Resizing, or Focus Mode) in the plugin settings.
+- **Primary Action Shortcut**: Adds an icon to the navbar menu. You can select **ONE** primary action for this shortcut (e.g., Theme Toggle, Font Resizing, or Focus Mode) in settings.
+- **Dedicated History Icon**: If enabled, a persistent History icon is added to the main navigation bar (next to the forward/back buttons) for instant access to your recent notes.
+- **Always Accessible**: These shortcuts are optimized for touch, featuring zero-delay interaction.
 
 ---
 
@@ -107,8 +108,11 @@ Access via:
 Keep your workflow fluid by jumping back to previous notes:
 
 - **Automatic Tracking**: Remembers the last 10 (configurable up to 20) notes you've opened.
+- **Mobile-Optimized**: Zero-animation closing and "toggle" support on mobile devices for a snappy, instantaneous feel.
+- **Intelligent Layout**: Long note titles automatically wrap, ensuring readability even on narrow mobile screens.
 - **Deleted File Support**: Visually distinguishes notes that have been moved to trash or deleted from the vault.
-- **Quick Access**: Dedicated status bar button and command palette shortcut.
+- **Quick Access**: Dedicated status bar button, persistent mobile navigation icon, and command palette shortcut.
+- **Toggle Behavior**: Tapping the history icon while the modal is open will instantly close it.
 
 ---
 

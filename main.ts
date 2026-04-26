@@ -27,6 +27,17 @@ interface EasyViewSettings {
     historySize: number;
     recentNotes: string[];
     contextMenuHistory: boolean;
+    showMobileHistoryIcon: boolean;
+}
+
+interface VaultConfigAccessor {
+    getConfig(key: string): unknown;
+    setConfig(key: string, value: unknown): void;
+}
+
+interface AppViewUpdater {
+    updateFontSize(): void;
+    updateTheme(): void;
 }
 
 const DEFAULT_SETTINGS: EasyViewSettings = {
@@ -55,23 +66,41 @@ const DEFAULT_SETTINGS: EasyViewSettings = {
     showHistoryBtn: true,
     historySize: 10,
     recentNotes: [],
-    contextMenuHistory: true
+    contextMenuHistory: true,
+    showMobileHistoryIcon: false
 };
 
 export default class EasyViewPlugin extends Plugin {
-    settings: EasyViewSettings;
+    settings!: EasyViewSettings;
     statusBarItem: HTMLElement | null = null;
     themeBtn: HTMLElement | null = null;
     modeBtn: HTMLElement | null = null;
+    focusBtn: HTMLElement | null = null;
+    zenBtn: HTMLElement | null = null;
     ribbonIconEl: HTMLElement | null = null;
+    mobileNavbarHistoryBtn: HTMLElement | null = null;
+    recentNotesModal: RecentNotesModal | null = null;
+    historySaveTimer: number | null = null;
+    lastTrackedNotePath: string | null = null;
 
     async onload() {
         await this.loadSettings();
         this.addSettingTab(new EasyViewSettingTab(this.app, this));
         this.registerCommands();
         this.restoreStates();
-        this.refreshStatusBar();
         this.refreshRibbonIcon();
+
+        this.app.workspace.onLayoutReady(() => {
+            this.refreshStatusBar();
+            this.updateModeIcon();
+            this.updateMobileHistoryIcon();
+            void this.trackRecentNote();
+        });
+
+        this.registerEvent(this.app.workspace.on('layout-change', () => {
+            this.updateModeIcon();
+            this.updateMobileHistoryIcon();
+        }));
 
         this.registerEvent(this.app.workspace.on('css-change', () => {
             this.updateThemeIcon();
@@ -80,20 +109,7 @@ export default class EasyViewPlugin extends Plugin {
 
         this.registerEvent(this.app.workspace.on('active-leaf-change', () => {
             this.updateModeIcon();
-        }));
-
-        this.registerEvent(this.app.workspace.on('layout-change', () => {
-            this.updateModeIcon();
-        }));
-
-        this.registerEvent(this.app.workspace.on('active-leaf-change', async () => {
-            const activeFile = this.app.workspace.getActiveFile();
-            if (!activeFile || activeFile.extension !== 'md') return;
-
-            let history = [activeFile.path, ...this.settings.recentNotes];
-            history = [...new Set(history)].slice(0, this.settings.historySize);
-            this.settings.recentNotes = history;
-            await this.saveData(this.settings);
+            void this.trackRecentNote();
         }));
 
         this.registerEvent(this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile) => {
@@ -108,25 +124,107 @@ export default class EasyViewPlugin extends Plugin {
     }
 
     onunload() {
+        this.flushRecentNotesSave();
         if (this.statusBarItem) this.statusBarItem.remove();
-        document.body.classList.remove('easyview-focus-mode', 'easyview-zen-mode');
+        this.removeMobileHistoryIcon();
+        document.body.classList.remove('easyview-focus-mode', 'easyview-zen-mode', 'easyview-has-history-icon');
     }
 
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-        if (!Array.isArray(this.settings.recentNotes)) this.settings.recentNotes = [];
+        this.normalizeSettings();
     }
 
     async saveSettings() {
+        this.normalizeSettings();
         await this.saveData(this.settings);
         this.refreshStatusBar();
         this.refreshRibbonIcon();
+        this.updateMobileHistoryIcon();
+    }
+
+    clampSetting(value: unknown, fallback: number, min: number, max: number) {
+        const parsed = typeof value === 'number' ? value : Number(value);
+        if (!Number.isFinite(parsed)) return fallback;
+        return Math.min(max, Math.max(min, Math.round(parsed)));
+    }
+
+    normalizeSettings() {
+        this.settings.buttonSize = this.clampSetting(this.settings.buttonSize, DEFAULT_SETTINGS.buttonSize, 10, 24);
+        this.settings.defaultFontSize = this.clampSetting(this.settings.defaultFontSize, DEFAULT_SETTINGS.defaultFontSize, 10, 30);
+        this.settings.historySize = this.clampSetting(this.settings.historySize, DEFAULT_SETTINGS.historySize, 5, 20);
+
+        const recentNotes = Array.isArray(this.settings.recentNotes) ? this.settings.recentNotes : [];
+        this.settings.recentNotes = [...new Set(recentNotes.filter((path): path is string => typeof path === 'string' && path.length > 0))]
+            .slice(0, this.settings.historySize);
+    }
+
+    scheduleRecentNotesSave() {
+        if (this.historySaveTimer !== null) {
+            window.clearTimeout(this.historySaveTimer);
+        }
+
+        this.historySaveTimer = window.setTimeout(() => {
+            this.historySaveTimer = null;
+            void this.saveData(this.settings);
+        }, 250);
+    }
+
+    flushRecentNotesSave() {
+        if (this.historySaveTimer === null) return;
+
+        window.clearTimeout(this.historySaveTimer);
+        this.historySaveTimer = null;
+        void this.saveData(this.settings);
+    }
+
+    async trackRecentNote() {
+        const activeFile = this.app.workspace.getActiveFile();
+        if (!activeFile || activeFile.extension !== 'md') return;
+        if (activeFile.path === this.lastTrackedNotePath) return;
+
+        const history = [activeFile.path, ...this.settings.recentNotes.filter(path => path !== activeFile.path)]
+            .slice(0, this.settings.historySize);
+
+        const hasChanged = history.length !== this.settings.recentNotes.length ||
+            history.some((path, index) => path !== this.settings.recentNotes[index]);
+
+        this.lastTrackedNotePath = activeFile.path;
+        if (!hasChanged) return;
+
+        this.settings.recentNotes = history;
+        this.scheduleRecentNotesSave();
     }
 
     notify(message: string, duration: number = 1500) {
         if (this.settings.showNotifications) {
             new Notice(message, duration);
         }
+    }
+
+    openRecentNotes() {
+        if (this.recentNotesModal) {
+            this.recentNotesModal.close();
+            return;
+        }
+        this.recentNotesModal = new RecentNotesModal(this);
+        this.recentNotesModal.open();
+    }
+
+    getVaultConfig<T>(key: string) {
+        return (this.app.vault as unknown as VaultConfigAccessor).getConfig(key) as T | undefined;
+    }
+
+    setVaultConfig(key: string, value: unknown) {
+        (this.app.vault as unknown as VaultConfigAccessor).setConfig(key, value);
+    }
+
+    updateAppFontSize() {
+        (this.app as unknown as AppViewUpdater).updateFontSize();
+    }
+
+    updateAppTheme() {
+        (this.app as unknown as AppViewUpdater).updateTheme();
     }
 
     registerCommands() {
@@ -152,12 +250,12 @@ export default class EasyViewPlugin extends Plugin {
         this.addCommand({
             id: 'recent-notes-history',
             name: 'Open recent notes',
-            checkCallback: (checking: boolean) => {
+            callback: () => {
                 if (this.settings.recentNotes.length > 0) {
-                    if (!checking) new RecentNotesModal(this).open();
-                    return true;
+                    this.openRecentNotes();
+                } else {
+                    new Notice('No recent notes history available.');
                 }
-                return false;
             }
         });
     }
@@ -173,6 +271,8 @@ export default class EasyViewPlugin extends Plugin {
 
         this.themeBtn = null;
         this.modeBtn = null;
+        this.focusBtn = null;
+        this.zenBtn = null;
 
         this.statusBarItem.addClass('plugin-easyview', 'easy-view-container-unique');
         this.statusBarItem.style.setProperty('--easy-view-btn-size', `${this.settings.buttonSize}px`);
@@ -182,7 +282,7 @@ export default class EasyViewPlugin extends Plugin {
             this.showContextMenu(e);
         };
 
-        if (this.settings.showHistoryBtn) this.createBtn('history', "Recent Notes", () => new RecentNotesModal(this).open());
+        if (this.settings.showHistoryBtn) this.createBtn('history', "Recent Notes", () => this.openRecentNotes());
         if (this.settings.showDecrementBtn) this.createBtn('minus', "Decrease", () => this.adjustFontSize(-1));
         if (this.settings.showIncrementBtn) this.createBtn('plus', "Increase", () => this.adjustFontSize(1));
         if (this.settings.showResetBtn) this.createBtn('rotate-ccw', "Reset", () => this.resetFontSize());
@@ -190,8 +290,16 @@ export default class EasyViewPlugin extends Plugin {
             this.modeBtn = this.createBtn('book-open', "Mode", () => this.cycleReadingMode());
             this.updateModeIcon();
         }
-        if (this.settings.showFocusBtn) this.createBtn('maximize', "Focus", () => this.toggleFocusMode());
-        if (this.settings.showZenBtn) this.createBtn('eye-off', "Zen", () => this.toggleZenMode());
+        
+        if (this.settings.showFocusBtn) {
+            this.focusBtn = this.createBtn('maximize', "Focus", () => this.toggleFocusMode());
+            if (this.settings.focusModeActive) this.focusBtn.addClass('is-active');
+        }
+        
+        if (this.settings.showZenBtn) {
+            this.zenBtn = this.createBtn('eye-off', "Zen", () => this.toggleZenMode());
+            if (this.settings.zenModeActive) this.zenBtn.addClass('is-active');
+        }
 
         if (this.settings.showThemeBtn) {
             this.themeBtn = this.createBtn('sun', "Theme", () => this.toggleTheme());
@@ -210,6 +318,7 @@ export default class EasyViewPlugin extends Plugin {
     showContextMenu(e: MouseEvent) {
         const menu = new Menu();
         let hasItems = false;
+        let hasStatefulItems = false;
 
         if (this.settings.contextMenuFocus) {
             menu.addItem(i => i
@@ -217,6 +326,7 @@ export default class EasyViewPlugin extends Plugin {
                 .setIcon('maximize')
                 .onClick(() => this.toggleFocusMode()));
             hasItems = true;
+            hasStatefulItems = true;
         }
 
         if (this.settings.contextMenuZen) {
@@ -225,14 +335,14 @@ export default class EasyViewPlugin extends Plugin {
                 .setIcon('eye-off')
                 .onClick(() => this.toggleZenMode()));
             hasItems = true;
+            hasStatefulItems = true;
         }
 
-        const hasStateful = this.settings.contextMenuFocus || this.settings.contextMenuZen;
         const hasActions = this.settings.contextMenuReadingMode || this.settings.contextMenuTheme ||
             this.settings.contextMenuIncreaseFont || this.settings.contextMenuDecreaseFont ||
             this.settings.contextMenuResetFont;
 
-        if (hasStateful && hasActions) menu.addSeparator();
+        if (hasStatefulItems && hasActions) menu.addSeparator();
 
         if (this.settings.contextMenuReadingMode) {
             menu.addItem(i => i
@@ -279,7 +389,7 @@ export default class EasyViewPlugin extends Plugin {
             menu.addItem(i => i
                 .setTitle('Recent notes…')
                 .setIcon('history')
-                .onClick(() => new RecentNotesModal(this).open()));
+                .onClick(() => this.openRecentNotes()));
             hasItems = true;
         }
 
@@ -287,24 +397,24 @@ export default class EasyViewPlugin extends Plugin {
     }
 
     adjustFontSize(change: number) {
-        const currentSize = (this.app.vault as any).getConfig('baseFontSize') || 16;
-        let newSize = Math.min(Math.max(currentSize + change, 10), 30);
-        (this.app.vault as any).setConfig('baseFontSize', newSize);
-        (this.app as any).updateFontSize();
+        const currentSize = this.getVaultConfig<number>('baseFontSize') || this.settings.defaultFontSize;
+        const newSize = Math.min(Math.max(currentSize + change, 10), 30);
+        this.setVaultConfig('baseFontSize', newSize);
+        this.updateAppFontSize();
         this.notify(`Font size: ${newSize}px`);
     }
 
     resetFontSize() {
-        (this.app.vault as any).setConfig('baseFontSize', this.settings.defaultFontSize);
-        (this.app as any).updateFontSize();
+        this.setVaultConfig('baseFontSize', this.settings.defaultFontSize);
+        this.updateAppFontSize();
         this.notify(`Font size reset to ${this.settings.defaultFontSize}px`);
     }
 
     toggleTheme() {
-        const currentTheme = (this.app.vault as any).getConfig('theme');
+        const currentTheme = this.getVaultConfig<string>('theme');
         const newTheme = currentTheme === 'obsidian' ? 'moonstone' : 'obsidian';
-        (this.app.vault as any).setConfig('theme', newTheme);
-        (this.app as any).updateTheme();
+        this.setVaultConfig('theme', newTheme);
+        this.updateAppTheme();
         this.updateThemeIcon();
         if (this.settings.ribbonAction === 'toggle-theme') this.refreshRibbonIcon();
         this.notify(`Theme: ${newTheme === 'obsidian' ? 'Dark' : 'Light'}`);
@@ -312,7 +422,7 @@ export default class EasyViewPlugin extends Plugin {
 
     updateThemeIcon() {
         if (!this.themeBtn) return;
-        setIcon(this.themeBtn, (this.app.vault as any).getConfig('theme') === 'obsidian' ? 'moon' : 'sun');
+        setIcon(this.themeBtn, this.getVaultConfig<string>('theme') === 'obsidian' ? 'moon' : 'sun');
     }
 
     updateModeIcon() {
@@ -337,10 +447,12 @@ export default class EasyViewPlugin extends Plugin {
         if (!this.settings.focusModeActive && this.settings.zenModeActive) {
             document.body.classList.remove('easyview-zen-mode');
             this.settings.zenModeActive = false;
+            if (this.zenBtn) this.zenBtn.removeClass('is-active');
         }
         const isActive = document.body.classList.toggle('easyview-focus-mode');
         this.settings.focusModeActive = isActive;
-        this.saveSettings();
+        if (this.focusBtn) this.focusBtn.toggleClass('is-active', isActive);
+        void this.saveSettings();
         this.notify(`Focus Mode: ${isActive ? 'ON' : 'OFF'}`);
     }
 
@@ -348,10 +460,12 @@ export default class EasyViewPlugin extends Plugin {
         if (!this.settings.zenModeActive && this.settings.focusModeActive) {
             document.body.classList.remove('easyview-focus-mode');
             this.settings.focusModeActive = false;
+            if (this.focusBtn) this.focusBtn.removeClass('is-active');
         }
         const isActive = document.body.classList.toggle('easyview-zen-mode');
         this.settings.zenModeActive = isActive;
-        this.saveSettings();
+        if (this.zenBtn) this.zenBtn.toggleClass('is-active', isActive);
+        void this.saveSettings();
         this.notify(`Zen Mode: ${isActive ? 'ON' : 'OFF'}`);
     }
 
@@ -386,7 +500,7 @@ export default class EasyViewPlugin extends Plugin {
             let action = () => {};
             switch (this.settings.ribbonAction) {
                 case 'toggle-theme':
-                    icon = (this.app.vault as any).getConfig('theme') === 'obsidian' ? 'moon' : 'sun';
+                    icon = this.getVaultConfig<string>('theme') === 'obsidian' ? 'moon' : 'sun';
                     title = 'Toggle Theme';
                     action = () => this.toggleTheme();
                     break;
@@ -425,13 +539,63 @@ export default class EasyViewPlugin extends Plugin {
         }
     }
 
+    updateMobileHistoryIcon() {
+        const navbar = Platform.isMobile ? document.querySelector<HTMLElement>('.mobile-navbar-actions') : null;
+        const forwardBtn = navbar?.querySelector<HTMLElement>('.mobile-navbar-action-forward') ?? null;
+        const existingBtn = navbar?.querySelector<HTMLElement>('.easyview-mobile-history') ?? null;
+
+        if (!this.settings.showMobileHistoryIcon || !navbar || !forwardBtn) {
+            this.removeMobileHistoryIcon();
+            return;
+        }
+
+        document.body.classList.add('easyview-has-history-icon');
+
+        if (existingBtn) {
+            this.mobileNavbarHistoryBtn = existingBtn;
+            return;
+        }
+
+        this.mobileNavbarHistoryBtn = document.createElement('div');
+        this.mobileNavbarHistoryBtn.className = 'mobile-navbar-action easyview-mobile-history';
+        this.mobileNavbarHistoryBtn.setAttribute('role', 'button');
+        this.mobileNavbarHistoryBtn.setAttribute('aria-label', 'Recent Notes');
+        this.mobileNavbarHistoryBtn.tabIndex = 0;
+
+        const iconWrapper = this.mobileNavbarHistoryBtn.createEl('span', {
+            cls: 'clickable-icon'
+        });
+        setIcon(iconWrapper, 'history');
+
+        this.registerDomEvent(this.mobileNavbarHistoryBtn, 'click', () => this.openRecentNotes());
+        this.registerDomEvent(this.mobileNavbarHistoryBtn, 'keydown', (event: KeyboardEvent) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            this.openRecentNotes();
+        });
+
+        navbar.insertBefore(this.mobileNavbarHistoryBtn, forwardBtn);
+    }
+
+    removeMobileHistoryIcon() {
+        document.body.classList.remove('easyview-has-history-icon');
+
+        const existingBtn = document.querySelector<HTMLElement>('.easyview-mobile-history');
+        if (existingBtn) existingBtn.remove();
+        if (this.mobileNavbarHistoryBtn && this.mobileNavbarHistoryBtn !== existingBtn) {
+            this.mobileNavbarHistoryBtn.remove();
+        }
+
+        this.mobileNavbarHistoryBtn = null;
+    }
+
     getLinkedImages(file: TFile): TFile[] {
         const cache = this.app.metadataCache.getFileCache(file);
         if (!cache) return [];
 
         const images = new Set<string>();
         const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'tiff', 'avif'];
-        const links = [...(cache.embeds || []), ...(cache.links || [])];
+        const links = cache.embeds || [];
 
         for (const link of links) {
             const rawPath = link.link.split('#')[0];
@@ -441,7 +605,9 @@ export default class EasyViewPlugin extends Plugin {
             }
         }
 
-        return Array.from(images).map(path => this.app.vault.getAbstractFileByPath(path) as TFile).filter(f => f !== null);
+        return Array.from(images)
+            .map(path => this.app.vault.getAbstractFileByPath(path))
+            .filter((file): file is TFile => file instanceof TFile);
     }
 
     async promptDelete(file: TFile) {
@@ -496,6 +662,16 @@ class EasyViewSettingTab extends PluginSettingTab {
             .addOption('cycle-mode', 'Cycle Reading Mode')
             .setValue(this.plugin.settings.ribbonAction)
             .onChange(async v => { this.plugin.settings.ribbonAction = v; await this.plugin.saveSettings(); }));
+
+        new Setting(containerEl)
+            .setName('History Icon in Navbar')
+            .setDesc('Display a dedicated history icon in the mobile bottom navigation bar.')
+            .addToggle(t => t
+                .setValue(this.plugin.settings.showMobileHistoryIcon)
+                .onChange(async v => {
+                    this.plugin.settings.showMobileHistoryIcon = v;
+                    await this.plugin.saveSettings();
+                }));
 
         containerEl.createEl('h3', { text: 'Visibility' });
         new Setting(containerEl).setName('Show Decrement').addToggle(t => t.setValue(this.plugin.settings.showDecrementBtn).onChange(async v => { this.plugin.settings.showDecrementBtn = v; await this.plugin.saveSettings(); }));
@@ -570,9 +746,9 @@ class EasyViewSettingTab extends PluginSettingTab {
 class DeleteWithAttachmentsModal extends Modal {
     file: TFile;
     images: TFile[];
-    callback: (deleteImages: boolean) => void;
+    callback: (deleteImages: boolean) => Promise<void>;
 
-    constructor(app: App, file: TFile, images: TFile[], callback: (deleteImages: boolean) => void) {
+    constructor(app: App, file: TFile, images: TFile[], callback: (deleteImages: boolean) => Promise<void>) {
         super(app);
         this.file = file;
         this.images = images;
@@ -581,6 +757,7 @@ class DeleteWithAttachmentsModal extends Modal {
 
     onOpen() {
         const { contentEl } = this;
+        contentEl.empty();
         contentEl.createEl('h2', { text: 'Delete note' });
         contentEl.createEl('p', { text: `Are you sure you want to move "${this.file.basename}" to trash?` });
 
@@ -606,20 +783,19 @@ class DeleteWithAttachmentsModal extends Modal {
         const buttons = contentEl.createDiv({ cls: 'dwa-button-row' });
         buttons.createEl('button', { text: 'Cancel' }).onclick = () => this.close();
         const delBtn = buttons.createEl('button', { text: 'Delete', cls: 'mod-warning' });
-        delBtn.onclick = () => {
-            this.callback(deleteImages);
+        delBtn.onclick = async () => {
+            await this.callback(deleteImages);
             this.close();
         };
     }
 
     onClose() {
-        const { contentEl } = this;
-        contentEl.empty();
     }
 }
 
 class RecentNotesModal extends Modal {
     plugin: EasyViewPlugin;
+    isNavigating = false;
 
     constructor(plugin: EasyViewPlugin) {
         super(plugin.app);
@@ -628,6 +804,9 @@ class RecentNotesModal extends Modal {
 
     onOpen() {
         const { contentEl } = this;
+        contentEl.empty();
+        this.modalEl.addClass('easyview-recent-notes-modal');
+        this.modalEl.closest('.modal-container')?.addClass('easyview-recent-notes-container');
         contentEl.createEl('h2', { text: 'Recent Notes' });
 
         const activeFile = this.app.workspace.getActiveFile();
@@ -643,10 +822,28 @@ class RecentNotesModal extends Modal {
             const basename = path.split('/').pop()?.replace(/\.md$/, '') || path;
             
             if (file instanceof TFile) {
-                const item = contentEl.createDiv({ cls: 'recent-note-item', text: basename });
-                item.onclick = async () => {
-                    await this.app.workspace.getLeaf(false).openFile(file);
+                const item = contentEl.createEl('button', {
+                    cls: 'recent-note-item',
+                    text: basename
+                });
+                item.type = 'button';
+                item.onclick = () => {
+                    if (this.isNavigating) return;
+
+                    this.isNavigating = true;
+                    item.disabled = true;
+                    
+                    // Kill animations immediately by hiding the entire container
+                    const container = this.modalEl.closest('.modal-container') as HTMLElement;
+                    if (container) {
+                        container.style.display = 'none';
+                        container.style.setProperty('display', 'none', 'important');
+                    }
+                    this.modalEl.style.display = 'none';
+                    this.modalEl.style.setProperty('display', 'none', 'important');
+                    
                     this.close();
+                    void this.app.workspace.getLeaf(false).openFile(file);
                 };
             } else {
                 contentEl.createDiv({ 
@@ -657,8 +854,18 @@ class RecentNotesModal extends Modal {
         });
     }
 
+    close() {
+        const container = this.modalEl.closest('.modal-container') as HTMLElement;
+        if (container) {
+            container.style.display = 'none';
+            container.style.setProperty('display', 'none', 'important');
+        }
+        this.modalEl.style.display = 'none';
+        this.modalEl.style.setProperty('display', 'none', 'important');
+        super.close();
+    }
+
     onClose() {
-        const { contentEl } = this;
-        contentEl.empty();
+        this.plugin.recentNotesModal = null;
     }
 }
