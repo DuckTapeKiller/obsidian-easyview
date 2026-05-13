@@ -23,8 +23,8 @@ interface EasyViewSettings {
     contextMenuDecreaseFont: boolean;
     contextMenuResetFont: boolean;
     deleteWithAttachments: boolean;
-    showBtn: boolean;
-    Size: number;
+    showHistoryBtn: boolean;
+    historySize: number;
     recentNotes: string[];
     contextMenuHistory: boolean;
     showMobileHistoryIcon: boolean;
@@ -83,6 +83,15 @@ export default class EasyViewPlugin extends Plugin {
     historySaveTimer: number | null = null;
     lastTrackedNotePath: string | null = null;
 
+    private getDoc(): Document {
+        // `activeDocument` is provided by Obsidian for popout-window compatibility.
+        return activeDocument;
+    }
+
+    private isRecord(value: unknown): value is Record<string, unknown> {
+        return typeof value === 'object' && value !== null;
+    }
+
     async onload() {
         await this.loadSettings();
         this.addSettingTab(new EasyViewSettingTab(this.app, this));
@@ -112,26 +121,30 @@ export default class EasyViewPlugin extends Plugin {
             void this.trackRecentNote();
         }));
 
-        this.registerEvent(this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile) => {
-            if (!this.settings.deleteWithAttachments || !(file instanceof TFile) || file.extension !== 'md') return;
-            menu.addItem((item) => {
-                item.setTitle('Delete with attachments...')
-                    .setIcon('trash-2')
-                    .setSection('danger')
-                    .onClick(() => this.promptDelete(file));
-            });
-        }));
-    }
+	        this.registerEvent(this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile) => {
+	            if (!this.settings.deleteWithAttachments || !(file instanceof TFile) || file.extension !== 'md') return;
+	            menu.addItem((item) => {
+	                item.setTitle('Delete with attachments...')
+	                    .setIcon('trash-2')
+	                    .setSection('danger')
+	                    .onClick(() => {
+	                        void this.promptDelete(file);
+	                    });
+	            });
+	        }));
+	    }
 
     onunload() {
         this.flushRecentNotesSave();
         if (this.statusBarItem) this.statusBarItem.remove();
         this.removeMobileHistoryIcon();
-        document.body.classList.remove('easyview-focus-mode', 'easyview-zen-mode', 'easyview-has-history-icon');
+        this.getDoc().body.classList.remove('easyview-focus-mode', 'easyview-zen-mode', 'easyview-has-history-icon');
     }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        const loadedRaw: unknown = await this.loadData();
+        const loaded = this.isRecord(loadedRaw) ? (loadedRaw as Partial<EasyViewSettings>) : null;
+        this.settings = { ...DEFAULT_SETTINGS, ...(loaded ?? {}) };
         this.normalizeSettings();
     }
 
@@ -227,21 +240,27 @@ export default class EasyViewPlugin extends Plugin {
         (this.app as unknown as AppViewUpdater).updateTheme();
     }
 
-    registerCommands() {
-        this.addCommand({ id: 'toggle-focus-mode', name: 'Toggle Focus Mode', callback: () => this.toggleFocusMode() });
-        this.addCommand({ id: 'toggle-zen-mode', name: 'Toggle Zen Mode', callback: () => this.toggleZenMode() });
-        this.addCommand({ id: 'toggle-theme', name: 'Toggle Theme', callback: () => this.toggleTheme() });
-        this.addCommand({ id: 'cycle-reading-mode', name: 'Cycle Reading Mode', callback: () => this.cycleReadingMode() });
-        this.addCommand({ id: 'increase-font-size', name: 'Increase Font Size', callback: () => this.adjustFontSize(1) });
-        this.addCommand({ id: 'decrease-font-size', name: 'Decrease Font Size', callback: () => this.adjustFontSize(-1) });
-        this.addCommand({ id: 'reset-font-size', name: 'Reset Font Size', callback: () => this.resetFontSize() });
+	    registerCommands() {
+	        this.addCommand({ id: 'toggle-focus-mode', name: 'Toggle Focus Mode', callback: () => this.toggleFocusMode() });
+	        this.addCommand({ id: 'toggle-zen-mode', name: 'Toggle Zen Mode', callback: () => this.toggleZenMode() });
+	        this.addCommand({ id: 'toggle-theme', name: 'Toggle Theme', callback: () => this.toggleTheme() });
+	        this.addCommand({
+	            id: 'cycle-reading-mode',
+	            name: 'Cycle Reading Mode',
+	            callback: () => {
+	                void this.cycleReadingMode();
+	            }
+	        });
+	        this.addCommand({ id: 'increase-font-size', name: 'Increase Font Size', callback: () => this.adjustFontSize(1) });
+	        this.addCommand({ id: 'decrease-font-size', name: 'Decrease Font Size', callback: () => this.adjustFontSize(-1) });
+	        this.addCommand({ id: 'reset-font-size', name: 'Reset Font Size', callback: () => this.resetFontSize() });
         this.addCommand({
             id: 'delete-current-note-with-attachments',
             name: 'Delete current note with linked attachments',
             checkCallback: (checking: boolean) => {
                 const activeFile = this.app.workspace.getActiveFile();
                 if (this.settings.deleteWithAttachments && activeFile && activeFile.extension === 'md') {
-                    if (!checking) this.promptDelete(activeFile);
+                    if (!checking) void this.promptDelete(activeFile);
                     return true;
                 }
                 return false;
@@ -262,8 +281,9 @@ export default class EasyViewPlugin extends Plugin {
     }
 
     restoreStates() {
-        if (this.settings.focusModeActive) document.body.classList.add('easyview-focus-mode');
-        if (this.settings.zenModeActive) document.body.classList.add('easyview-zen-mode');
+        const doc = this.getDoc();
+        if (this.settings.focusModeActive) doc.body.classList.add('easyview-focus-mode');
+        if (this.settings.zenModeActive) doc.body.classList.add('easyview-zen-mode');
     }
 
     refreshStatusBar() {
@@ -288,7 +308,9 @@ export default class EasyViewPlugin extends Plugin {
         if (this.settings.showIncrementBtn) this.createBtn('plus', "Increase", () => this.adjustFontSize(1));
         if (this.settings.showResetBtn) this.createBtn('rotate-ccw', "Reset", () => this.resetFontSize());
         if (this.settings.showReadingModeBtn) {
-            this.modeBtn = this.createBtn('book-open', "Mode", () => this.cycleReadingMode());
+            this.modeBtn = this.createBtn('book-open', "Mode", () => {
+                void this.cycleReadingMode();
+            });
             this.updateModeIcon();
         }
         
@@ -345,13 +367,15 @@ export default class EasyViewPlugin extends Plugin {
 
         if (hasStatefulItems && hasActions) menu.addSeparator();
 
-        if (this.settings.contextMenuReadingMode) {
-            menu.addItem(i => i
-                .setTitle('Cycle Reading Mode')
-                .setIcon('book-open')
-                .onClick(() => this.cycleReadingMode()));
-            hasItems = true;
-        }
+	        if (this.settings.contextMenuReadingMode) {
+	            menu.addItem(i => i
+	                .setTitle('Cycle Reading Mode')
+	                .setIcon('book-open')
+	                .onClick(() => {
+	                    void this.cycleReadingMode();
+	                }));
+	            hasItems = true;
+	        }
 
         if (this.settings.contextMenuTheme) {
             menu.addItem(i => i
@@ -446,11 +470,11 @@ export default class EasyViewPlugin extends Plugin {
 
     toggleFocusMode() {
         if (!this.settings.focusModeActive && this.settings.zenModeActive) {
-            document.body.classList.remove('easyview-zen-mode');
+            this.getDoc().body.classList.remove('easyview-zen-mode');
             this.settings.zenModeActive = false;
             if (this.zenBtn) this.zenBtn.removeClass('is-active');
         }
-        const isActive = document.body.classList.toggle('easyview-focus-mode');
+        const isActive = this.getDoc().body.classList.toggle('easyview-focus-mode');
         this.settings.focusModeActive = isActive;
         if (this.focusBtn) this.focusBtn.toggleClass('is-active', isActive);
         void this.saveSettings();
@@ -459,11 +483,11 @@ export default class EasyViewPlugin extends Plugin {
 
     toggleZenMode() {
         if (!this.settings.zenModeActive && this.settings.focusModeActive) {
-            document.body.classList.remove('easyview-focus-mode');
+            this.getDoc().body.classList.remove('easyview-focus-mode');
             this.settings.focusModeActive = false;
             if (this.focusBtn) this.focusBtn.removeClass('is-active');
         }
-        const isActive = document.body.classList.toggle('easyview-zen-mode');
+        const isActive = this.getDoc().body.classList.toggle('easyview-zen-mode');
         this.settings.zenModeActive = isActive;
         if (this.zenBtn) this.zenBtn.toggleClass('is-active', isActive);
         void this.saveSettings();
@@ -498,7 +522,7 @@ export default class EasyViewPlugin extends Plugin {
         if (this.settings.showRibbonIcon && Platform.isMobile) {
             let icon = 'help-circle';
             let title = 'EasyView';
-            let action = () => {};
+            let action: () => void = () => {};
             switch (this.settings.ribbonAction) {
                 case 'toggle-theme':
                     icon = this.getVaultConfig<string>('theme') === 'obsidian' ? 'moon' : 'sun';
@@ -533,7 +557,9 @@ export default class EasyViewPlugin extends Plugin {
                 case 'cycle-mode':
                     icon = 'book-open';
                     title = 'Cycle Reading Mode';
-                    action = () => this.cycleReadingMode();
+                    action = () => {
+                        void this.cycleReadingMode();
+                    };
                     break;
             }
             this.ribbonIconEl = this.addRibbonIcon(icon, title, action);
@@ -541,7 +567,8 @@ export default class EasyViewPlugin extends Plugin {
     }
 
     updateMobileHistoryIcon() {
-        const navbar = Platform.isMobile ? document.querySelector<HTMLElement>('.mobile-navbar-actions') : null;
+        const doc = this.getDoc();
+        const navbar = Platform.isMobile ? doc.querySelector<HTMLElement>('.mobile-navbar-actions') : null;
         const forwardBtn = navbar?.querySelector<HTMLElement>('.mobile-navbar-action-forward') ?? null;
         const existingBtn = navbar?.querySelector<HTMLElement>('.easyview-mobile-history') ?? null;
 
@@ -550,22 +577,19 @@ export default class EasyViewPlugin extends Plugin {
             return;
         }
 
-        document.body.classList.add('easyview-has-history-icon');
+        doc.body.classList.add('easyview-has-history-icon');
 
         if (existingBtn) {
             this.mobileNavbarHistoryBtn = existingBtn;
             return;
         }
 
-        this.mobileNavbarHistoryBtn = document.createElement('div');
-        this.mobileNavbarHistoryBtn.className = 'mobile-navbar-action easyview-mobile-history';
+        this.mobileNavbarHistoryBtn = navbar.createDiv({ cls: 'mobile-navbar-action easyview-mobile-history' });
         this.mobileNavbarHistoryBtn.setAttribute('role', 'button');
         this.mobileNavbarHistoryBtn.setAttribute('aria-label', 'Recent Notes');
         this.mobileNavbarHistoryBtn.tabIndex = 0;
 
-        const iconWrapper = this.mobileNavbarHistoryBtn.createEl('span', {
-            cls: 'clickable-icon'
-        });
+        const iconWrapper = this.mobileNavbarHistoryBtn.createSpan({ cls: 'clickable-icon' });
         setIcon(iconWrapper, 'spool');
 
         this.registerDomEvent(this.mobileNavbarHistoryBtn, 'click', () => this.openRecentNotes());
@@ -579,9 +603,9 @@ export default class EasyViewPlugin extends Plugin {
     }
 
     removeMobileHistoryIcon() {
-        document.body.classList.remove('easyview-has-history-icon');
+        this.getDoc().body.classList.remove('easyview-has-history-icon');
 
-        const existingBtn = document.querySelector<HTMLElement>('.easyview-mobile-history');
+        const existingBtn = this.getDoc().querySelector<HTMLElement>('.easyview-mobile-history');
         if (existingBtn) existingBtn.remove();
         if (this.mobileNavbarHistoryBtn && this.mobileNavbarHistoryBtn !== existingBtn) {
             this.mobileNavbarHistoryBtn.remove();
@@ -620,7 +644,7 @@ export default class EasyViewPlugin extends Plugin {
                     try {
                         await this.app.fileManager.trashFile(img);
                         deletedCount++;
-                    } catch (e) {
+                    } catch (_e) {
                         new Notice(`Failed to delete ${img.name}`);
                     }
                 }
@@ -633,7 +657,7 @@ export default class EasyViewPlugin extends Plugin {
                     ? `Deleted ${noteName} and ${deletedCount} image${deletedCount === 1 ? '' : 's'}.`
                     : `Deleted ${noteName}.`;
                 new Notice(msg);
-            } catch (e) {
+            } catch (_e) {
                 new Notice(`Failed to delete ${file.name}`);
             }
         }).open();
@@ -646,12 +670,12 @@ class EasyViewSettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        containerEl.createEl('h2', { text: 'Easy View Settings' });
+        new Setting(containerEl).setName('General').setHeading();
 
         new Setting(containerEl).setName('Button Size (px)').addSlider(s => s.setLimits(10, 24, 1).setValue(this.plugin.settings.buttonSize).onChange(async v => { this.plugin.settings.buttonSize = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Default Font Size').addText(t => t.setValue(String(this.plugin.settings.defaultFontSize)).onChange(async v => { const n = parseInt(v); if (!isNaN(n)) { this.plugin.settings.defaultFontSize = n; await this.plugin.saveSettings(); } }));
 
-        containerEl.createEl('h3', { text: 'Mobile / Ribbon' });
+        new Setting(containerEl).setName('Mobile / Ribbon').setHeading();
         new Setting(containerEl).setName('Show Ribbon Icon (Mobile Only)').setDesc('Display a shortcut icon on the mobile navigation bar. This setting is ignored on desktop.').addToggle(t => t.setValue(this.plugin.settings.showRibbonIcon).onChange(async v => { this.plugin.settings.showRibbonIcon = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Ribbon Icon Action').setDesc('Select which feature the ribbon icon should trigger.').addDropdown(d => d
             .addOption('toggle-theme', 'Toggle Theme')
@@ -674,7 +698,7 @@ class EasyViewSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        containerEl.createEl('h3', { text: 'Visibility' });
+        new Setting(containerEl).setName('Visibility').setHeading();
         new Setting(containerEl).setName('Show Decrement').addToggle(t => t.setValue(this.plugin.settings.showDecrementBtn).onChange(async v => { this.plugin.settings.showDecrementBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show Increment').addToggle(t => t.setValue(this.plugin.settings.showIncrementBtn).onChange(async v => { this.plugin.settings.showIncrementBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show Reset').addToggle(t => t.setValue(this.plugin.settings.showResetBtn).onChange(async v => { this.plugin.settings.showResetBtn = v; await this.plugin.saveSettings(); }));
@@ -682,11 +706,11 @@ class EasyViewSettingTab extends PluginSettingTab {
         new Setting(containerEl).setName('Show Focus').addToggle(t => t.setValue(this.plugin.settings.showFocusBtn).onChange(async v => { this.plugin.settings.showFocusBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show View Switcher').setDesc('Reader / Editing / Source').addToggle(t => t.setValue(this.plugin.settings.showReadingModeBtn).onChange(async v => { this.plugin.settings.showReadingModeBtn = v; await this.plugin.saveSettings(); }));
 
-        containerEl.createEl('h3', { text: 'Features' });
+        new Setting(containerEl).setName('Features').setHeading();
         new Setting(containerEl).setName('Show Zen').addToggle(t => t.setValue(this.plugin.settings.showZenBtn).onChange(async v => { this.plugin.settings.showZenBtn = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Show Action Tooltips').setDesc('Show a notification popup when an action (e.g., resizing font) is performed.').addToggle(t => t.setValue(this.plugin.settings.showNotifications).onChange(async v => { this.plugin.settings.showNotifications = v; await this.plugin.saveSettings(); }));
 
-        containerEl.createEl('h3', { text: 'Context Menu' });
+        new Setting(containerEl).setName('Context Menu').setHeading();
         containerEl.createEl('p', { text: 'Choose which items appear when you right-click the status bar.', cls: 'setting-item-description' });
         new Setting(containerEl).setName('Focus Mode').addToggle(t => t.setValue(this.plugin.settings.contextMenuFocus).onChange(async v => { this.plugin.settings.contextMenuFocus = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Zen Mode').addToggle(t => t.setValue(this.plugin.settings.contextMenuZen).onChange(async v => { this.plugin.settings.contextMenuZen = v; await this.plugin.saveSettings(); }));
@@ -697,7 +721,7 @@ class EasyViewSettingTab extends PluginSettingTab {
         new Setting(containerEl).setName('Reset Font Size').addToggle(t => t.setValue(this.plugin.settings.contextMenuResetFont).onChange(async v => { this.plugin.settings.contextMenuResetFont = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Recent Notes').addToggle(t => t.setValue(this.plugin.settings.contextMenuHistory).onChange(async v => { this.plugin.settings.contextMenuHistory = v; await this.plugin.saveSettings(); }));
 
-        containerEl.createEl('h3', { text: 'File Management' });
+        new Setting(containerEl).setName('File Management').setHeading();
         new Setting(containerEl)
             .setName('Delete with Attachments')
             .setDesc('When deleting a note, prompt to also trash its linked images. Works independently of Obsidian\'s native confirmation setting.')
@@ -708,7 +732,7 @@ class EasyViewSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        containerEl.createEl('h3', { text: 'Recent History' });
+        new Setting(containerEl).setName('Recent History').setHeading();
         new Setting(containerEl)
             .setName('Show History Button')
             .setDesc('Display a recent notes button in the status bar.')
@@ -833,16 +857,12 @@ class RecentNotesModal extends Modal {
 
                     this.isNavigating = true;
                     item.disabled = true;
-                    
-                    // Kill animations immediately by hiding the entire container
-                    const container = this.modalEl.closest('.modal-container') as HTMLElement;
-                    if (container) {
-                        container.style.display = 'none';
-                        container.style.setProperty('display', 'none', 'important');
-                    }
-                    this.modalEl.style.display = 'none';
-                    this.modalEl.style.setProperty('display', 'none', 'important');
-                    
+
+                    // Kill animations immediately without mutating inline styles.
+                    const container = this.modalEl.closest('.modal-container') as HTMLElement | null;
+                    container?.addClass('easyview-force-hide');
+                    this.modalEl.addClass('easyview-force-hide');
+
                     this.close();
                     void this.app.workspace.getLeaf(false).openFile(file);
                 };
@@ -856,13 +876,6 @@ class RecentNotesModal extends Modal {
     }
 
     close() {
-        const container = this.modalEl.closest('.modal-container') as HTMLElement;
-        if (container) {
-            container.style.display = 'none';
-            container.style.setProperty('display', 'none', 'important');
-        }
-        this.modalEl.style.display = 'none';
-        this.modalEl.style.setProperty('display', 'none', 'important');
         super.close();
     }
 

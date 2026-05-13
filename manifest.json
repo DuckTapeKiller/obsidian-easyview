@@ -1,8 +1,8 @@
 {
     "id": "easyview",
     "name": "EasyView",
-    "version": "1.0.0",
-    "minAppVersion": "0.15.0",
+    "version": "1.0.1",
+    "minAppVersion": "1.6.6",
     "description": "Adds functionality to easily scale font size and switch themes from the status bar.",
     "author": "DuckTapeKiller",
     "authorUrl": "https://github.com/DuckTapeKiller",

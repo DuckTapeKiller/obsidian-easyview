@@ -229,6 +229,11 @@ body.easyview-zen-mode .workspace-tabs {
     display: none !important;
 }
 
+/* Force-instant close without inline styles (used by RecentNotesModal). */
+.easyview-force-hide {
+    display: none !important;
+}
+
 /* ── OPTION B: Mobile Navbar Fix ───────────────────────── */
 
 /* Hide forward button */

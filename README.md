@@ -1,9 +1,3 @@
-[![GitHub Repo stars](https://img.shields.io/github/stars/DuckTapeKiller/obsidian-easyview?style=flat&logo=obsidian&color=%232980b9)](https://github.com/DuckTapeKiller/obsidian-easyview/stargazers)
-[![GitHub issues](https://img.shields.io/github/issues/DuckTapeKiller/obsidian-easyview?logo=obsidian&color=%232980b9)](https://github.com/DuckTapeKiller/obsidian-easyview/issues)
-[![GitHub closed issues](https://img.shields.io/github/issues-closed/DuckTapeKiller/obsidian-easyview?logo=obsidian&color=%232980b9)](https://github.com/DuckTapeKiller/obsidian-easyview/issues?q=is%3Aissue+is%3Aclosed)
-[![GitHub manifest version](https://img.shields.io/github/manifest-json/v/DuckTapeKiller/obsidian-easyview?logo=obsidian&color=%232980b9)](https://github.com/DuckTapeKiller/obsidian-easyview/blob/main/manifest.json)
-[![Downloads](https://img.shields.io/github/downloads/DuckTapeKiller/obsidian-easyview/total?logo=obsidian&color=%232980b9)](https://github.com/DuckTapeKiller/obsidian-easyview/releases)
-
 ![Easy View Art](https://github.com/user-attachments/assets/d2f98788-73ed-44b0-8488-5fa75f4cf914)
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/ducktapekiller)
@@ -234,7 +228,7 @@ Choose which items appear when you right-click the status bar. Independent from 
 5. Reload Obsidian
 6. Enable "Easy View" in **Settings → Community Plugins**
 
-**Requirements**: Obsidian v1.0.0 or higher
+**Requirements**: Obsidian v1.6.6 or higher
 
 ---
 
