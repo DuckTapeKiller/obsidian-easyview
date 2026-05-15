@@ -83,6 +83,10 @@ export default class EasyViewPlugin extends Plugin {
     historySaveTimer: number | null = null;
     lastTrackedNotePath: string | null = null;
 
+    pendingFontSize: number | null = null;
+    fontSizeSaveTimer: number | null = null;
+    activeNotice: Notice | null = null;
+
     private getDoc(): Document {
         // `activeDocument` is provided by Obsidian for popout-window compatibility.
         return activeDocument;
@@ -121,18 +125,18 @@ export default class EasyViewPlugin extends Plugin {
             void this.trackRecentNote();
         }));
 
-	        this.registerEvent(this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile) => {
-	            if (!this.settings.deleteWithAttachments || !(file instanceof TFile) || file.extension !== 'md') return;
-	            menu.addItem((item) => {
-	                item.setTitle('Delete with attachments...')
-	                    .setIcon('trash-2')
-	                    .setSection('danger')
-	                    .onClick(() => {
-	                        void this.promptDelete(file);
-	                    });
-	            });
-	        }));
-	    }
+        this.registerEvent(this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile) => {
+            if (!this.settings.deleteWithAttachments || !(file instanceof TFile) || file.extension !== 'md') return;
+            menu.addItem((item) => {
+                item.setTitle('Delete with attachments...')
+                    .setIcon('trash-2')
+                    .setSection('danger')
+                    .onClick(() => {
+                        void this.promptDelete(file);
+                    });
+            });
+        }));
+    }
 
     onunload() {
         this.flushRecentNotesSave();
@@ -240,20 +244,20 @@ export default class EasyViewPlugin extends Plugin {
         (this.app as unknown as AppViewUpdater).updateTheme();
     }
 
-	    registerCommands() {
-	        this.addCommand({ id: 'toggle-focus-mode', name: 'Toggle Focus Mode', callback: () => this.toggleFocusMode() });
-	        this.addCommand({ id: 'toggle-zen-mode', name: 'Toggle Zen Mode', callback: () => this.toggleZenMode() });
-	        this.addCommand({ id: 'toggle-theme', name: 'Toggle Theme', callback: () => this.toggleTheme() });
-	        this.addCommand({
-	            id: 'cycle-reading-mode',
-	            name: 'Cycle Reading Mode',
-	            callback: () => {
-	                void this.cycleReadingMode();
-	            }
-	        });
-	        this.addCommand({ id: 'increase-font-size', name: 'Increase Font Size', callback: () => this.adjustFontSize(1) });
-	        this.addCommand({ id: 'decrease-font-size', name: 'Decrease Font Size', callback: () => this.adjustFontSize(-1) });
-	        this.addCommand({ id: 'reset-font-size', name: 'Reset Font Size', callback: () => this.resetFontSize() });
+    registerCommands() {
+        this.addCommand({ id: 'toggle-focus-mode', name: 'Toggle Focus Mode', callback: () => this.toggleFocusMode() });
+        this.addCommand({ id: 'toggle-zen-mode', name: 'Toggle Zen Mode', callback: () => this.toggleZenMode() });
+        this.addCommand({ id: 'toggle-theme', name: 'Toggle Theme', callback: () => this.toggleTheme() });
+        this.addCommand({
+            id: 'cycle-reading-mode',
+            name: 'Cycle Reading Mode',
+            callback: () => {
+                void this.cycleReadingMode();
+            }
+        });
+        this.addCommand({ id: 'increase-font-size', name: 'Increase Font Size', callback: () => this.adjustFontSize(1) });
+        this.addCommand({ id: 'decrease-font-size', name: 'Decrease Font Size', callback: () => this.adjustFontSize(-1) });
+        this.addCommand({ id: 'reset-font-size', name: 'Reset Font Size', callback: () => this.resetFontSize() });
         this.addCommand({
             id: 'delete-current-note-with-attachments',
             name: 'Delete current note with linked attachments',
@@ -367,15 +371,15 @@ export default class EasyViewPlugin extends Plugin {
 
         if (hasStatefulItems && hasActions) menu.addSeparator();
 
-	        if (this.settings.contextMenuReadingMode) {
-	            menu.addItem(i => i
-	                .setTitle('Cycle Reading Mode')
-	                .setIcon('book-open')
-	                .onClick(() => {
-	                    void this.cycleReadingMode();
-	                }));
-	            hasItems = true;
-	        }
+        if (this.settings.contextMenuReadingMode) {
+            menu.addItem(i => i
+                .setTitle('Cycle Reading Mode')
+                .setIcon('book-open')
+                .onClick(() => {
+                    void this.cycleReadingMode();
+                }));
+            hasItems = true;
+        }
 
         if (this.settings.contextMenuTheme) {
             menu.addItem(i => i
@@ -422,17 +426,50 @@ export default class EasyViewPlugin extends Plugin {
     }
 
     adjustFontSize(change: number) {
-        const currentSize = this.getVaultConfig<number>('baseFontSize') || this.settings.defaultFontSize;
+        const currentSize = this.pendingFontSize ?? (this.getVaultConfig<number>('baseFontSize') || this.settings.defaultFontSize);
         const newSize = Math.min(Math.max(currentSize + change, 10), 30);
-        this.setVaultConfig('baseFontSize', newSize);
-        this.updateAppFontSize();
-        this.notify(`Font size: ${newSize}px`);
+        this.pendingFontSize = newSize;
+
+        document.body.style.setProperty('--font-text-size', `${newSize}px`);
+
+        if (this.fontSizeSaveTimer !== null) {
+            window.clearTimeout(this.fontSizeSaveTimer);
+        }
+
+        this.fontSizeSaveTimer = window.setTimeout(() => {
+            this.setVaultConfig('baseFontSize', this.pendingFontSize);
+            this.updateAppFontSize();
+            document.body.style.removeProperty('--font-text-size');
+            this.pendingFontSize = null;
+        }, 300);
+
+        if (this.activeNotice) {
+            this.activeNotice.hide();
+        }
+        
+        if (this.settings.showNotifications) {
+            this.activeNotice = new Notice(`Font size: ${newSize}px`);
+        }
     }
 
     resetFontSize() {
+        if (this.fontSizeSaveTimer !== null) {
+            window.clearTimeout(this.fontSizeSaveTimer);
+            this.fontSizeSaveTimer = null;
+        }
+        this.pendingFontSize = null;
+        document.body.style.removeProperty('--font-text-size');
+        
         this.setVaultConfig('baseFontSize', this.settings.defaultFontSize);
         this.updateAppFontSize();
-        this.notify(`Font size reset to ${this.settings.defaultFontSize}px`);
+        
+        if (this.activeNotice) {
+            this.activeNotice.hide();
+        }
+        
+        if (this.settings.showNotifications) {
+            this.activeNotice = new Notice(`Font size reset to ${this.settings.defaultFontSize}px`);
+        }
     }
 
     toggleTheme() {
@@ -722,7 +759,7 @@ class EasyViewSettingTab extends PluginSettingTab {
         new Setting(containerEl).setName('File Management').setHeading();
         new Setting(containerEl)
             .setName('Delete with Attachments')
-            .setDesc('When deleting a note, prompt to also trash its linked images. Works independently of Obsidian\'s native confirmation setting.')
+            .setDesc("When deleting a note, prompt to also trash its linked images. Works independently of Obsidian's native confirmation setting.")
             .addToggle(t => t
                 .setValue(this.plugin.settings.deleteWithAttachments)
                 .onChange(async (value) => {
