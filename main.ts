@@ -644,7 +644,7 @@ export default class EasyViewPlugin extends Plugin {
                     try {
                         await this.app.fileManager.trashFile(img);
                         deletedCount++;
-                    } catch (_e) {
+                    } catch {
                         new Notice(`Failed to delete ${img.name}`);
                     }
                 }
@@ -657,7 +657,7 @@ export default class EasyViewPlugin extends Plugin {
                     ? `Deleted ${noteName} and ${deletedCount} image${deletedCount === 1 ? '' : 's'}.`
                     : `Deleted ${noteName}.`;
                 new Notice(msg);
-            } catch (_e) {
+            } catch {
                 new Notice(`Failed to delete ${file.name}`);
             }
         }).open();
@@ -670,8 +670,6 @@ class EasyViewSettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        new Setting(containerEl).setName('General').setHeading();
-
         new Setting(containerEl).setName('Button Size (px)').addSlider(s => s.setLimits(10, 24, 1).setValue(this.plugin.settings.buttonSize).onChange(async v => { this.plugin.settings.buttonSize = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Default Font Size').addText(t => t.setValue(String(this.plugin.settings.defaultFontSize)).onChange(async v => { const n = parseInt(v); if (!isNaN(n)) { this.plugin.settings.defaultFontSize = n; await this.plugin.saveSettings(); } }));
 
@@ -859,7 +857,7 @@ class RecentNotesModal extends Modal {
                     item.disabled = true;
 
                     // Kill animations immediately without mutating inline styles.
-                    const container = this.modalEl.closest('.modal-container') as HTMLElement | null;
+                    const container = this.modalEl.closest('.modal-container');
                     container?.addClass('easyview-force-hide');
                     this.modalEl.addClass('easyview-force-hide');
 
