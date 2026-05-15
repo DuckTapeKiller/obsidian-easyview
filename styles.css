@@ -1,30 +1,31 @@
-/* EasyView Plugin Styles - Corrected Mobile Navbar */
+/* EasyView Plugin Styles */
 
 /* NO HOVER BACKGROUNDS ON CONTAINER */
-body .status-bar-item.plugin-easyview,
-body .status-bar-item.easy-view-container-unique {
-    padding: 0 !important;
-    gap: 0 !important;
-    background-color: var(--background-primary) !important;
+body div.status-bar .status-bar-item.plugin-easyview,
+body div.status-bar .status-bar-item.easy-view-container-unique {
+    padding: 0;
+    gap: 0;
+    background-color: var(--background-primary);
 }
 
-body .status-bar-item.plugin-easyview:hover,
-body .status-bar-item.easy-view-container-unique:hover {
-    background-color: var(--background-primary) !important;
-    border: none !important;
-    box-shadow: none !important;
+body div.status-bar .status-bar-item.plugin-easyview:hover,
+body div.status-bar .status-bar-item.easy-view-container-unique:hover {
+    background-color: var(--background-primary);
+    border: none;
+    box-shadow: none;
 }
 
 /* BUTTON STYLES */
-.easy-view-btn {
-    border: none !important;
-    border-right: 1px solid var(--background-modifier-border) !important;
-    box-shadow: none !important;
-    color: var(--text-muted) !important;
+body div.status-bar .status-bar-item .easy-view-btn,
+body div.app-container .easy-view-btn {
+    border: none;
+    border-right: 1px solid var(--background-modifier-border);
+    box-shadow: none;
+    color: var(--text-muted);
     font-weight: normal;
     cursor: pointer;
     font-family: var(--font-interface);
-    background-color: transparent !important;
+    background-color: transparent;
     font-size: var(--easy-view-btn-size, 13px);
     height: auto;
     min-height: calc(var(--easy-view-btn-size, 13px) * 2);
@@ -35,129 +36,135 @@ body .status-bar-item.easy-view-container-unique:hover {
     justify-content: center;
     align-items: center;
     line-height: 1;
-    border-radius: 0 !important;
+    border-radius: 0;
     box-sizing: border-box;
 }
 
-.easy-view-btn:last-child {
-    border-right: none !important;
+body div.status-bar .status-bar-item .easy-view-btn:last-child,
+body div.app-container .easy-view-btn:last-child {
+    border-right: none;
 }
 
-body.theme-light .easy-view-btn:hover {
-    background-color: transparent !important;
-    color: var(--text-normal) !important;
-    border-color: transparent !important;
-    box-shadow: none !important;
+body.theme-light div.status-bar .status-bar-item .easy-view-btn:hover,
+body.theme-light div.app-container .easy-view-btn:hover {
+    background-color: transparent;
+    color: var(--text-normal);
+    border-color: transparent;
+    box-shadow: none;
 }
 
-body.theme-dark .easy-view-btn:hover {
-    background-color: transparent !important;
-    color: #d1d1d1 !important;
-    border-color: transparent !important;
-    box-shadow: none !important;
+body.theme-dark div.status-bar .status-bar-item .easy-view-btn:hover,
+body.theme-dark div.app-container .easy-view-btn:hover {
+    background-color: transparent;
+    color: #d1d1d1;
+    border-color: transparent;
+    box-shadow: none;
 }
 
-.easy-view-btn.is-active {
-    color: var(--text-accent) !important;
-    background-color: var(--background-modifier-hover) !important;
+body div.status-bar .status-bar-item .easy-view-btn.is-active,
+body div.app-container .easy-view-btn.is-active {
+    color: var(--text-accent);
+    background-color: var(--background-modifier-hover);
 }
 
 /* Ensure active state persists on hover */
-body.theme-light .easy-view-btn.is-active:hover,
-body.theme-dark .easy-view-btn.is-active:hover {
-    background-color: var(--background-modifier-hover) !important;
-    color: var(--text-accent) !important;
+body.theme-light div.status-bar .status-bar-item .easy-view-btn.is-active:hover,
+body.theme-dark div.status-bar .status-bar-item .easy-view-btn.is-active:hover,
+body.theme-light div.app-container .easy-view-btn.is-active:hover,
+body.theme-dark div.app-container .easy-view-btn.is-active:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-accent);
 }
 
 /* FOCUS MODE */
-body.easyview-focus-mode .workspace-ribbon,
-body.easyview-focus-mode .workspace-split.mod-left-split,
-body.easyview-focus-mode .workspace-split.mod-right-split {
-    display: none !important;
+body.easyview-focus-mode div.workspace-ribbon,
+body.easyview-focus-mode div.workspace-split.mod-left-split,
+body.easyview-focus-mode div.workspace-split.mod-right-split {
+    display: none;
 }
 
-body.easyview-focus-mode .workspace-tab-header-container {
-    padding-left: 72px !important;
+body.easyview-focus-mode div.workspace-tab-header-container {
+    padding-left: 72px;
 }
 
-body.easyview-focus-mode .titlebar-button-container {
-    margin-left: 72px !important;
+body.easyview-focus-mode div.titlebar-button-container {
+    margin-left: 72px;
 }
 
-body.mod-mac.easyview-focus-mode .view-header-nav-buttons,
-body.mod-mac.easyview-zen-mode .view-header-nav-buttons {
-    margin-left: 85px !important;
+body.mod-mac.easyview-focus-mode div.view-header-nav-buttons,
+body.mod-mac.easyview-zen-mode div.view-header-nav-buttons {
+    margin-left: 85px;
     -webkit-app-region: no-drag;
 }
 
 /* ZEN MODE */
-body.easyview-zen-mode .workspace-ribbon,
-body.easyview-zen-mode .workspace-split.mod-left-split,
-body.easyview-zen-mode .workspace-split.mod-right-split,
-body.easyview-zen-mode .workspace-tab-header-container,
-body.easyview-zen-mode .titlebar {
-    display: none !important;
+body.easyview-zen-mode div.workspace-ribbon,
+body.easyview-zen-mode div.workspace-split.mod-left-split,
+body.easyview-zen-mode div.workspace-split.mod-right-split,
+body.easyview-zen-mode div.workspace-tab-header-container,
+body.easyview-zen-mode div.titlebar {
+    display: none;
 }
 
-body.easyview-zen-mode .status-bar {
-    display: flex !important;
-    position: fixed !important;
-    bottom: 0 !important;
-    width: 100% !important;
-    z-index: 1000 !important;
-    background-color: var(--background-primary) !important;
-    opacity: 0 !important;
-    transition: opacity 0.3s ease-in-out !important;
+body.easyview-zen-mode div.status-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    z-index: 1000;
+    background-color: var(--background-primary);
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
 }
 
 /* Allow status bar to be visible on mobile in Zen Mode via tap-reveal or constant visibility */
-body.mod-mobile.easyview-zen-mode .status-bar,
-body.is-mobile.easyview-zen-mode .status-bar {
-    opacity: 0.8 !important; /* Semi-transparent on mobile to allow exit */
+body.mod-mobile.easyview-zen-mode div.status-bar,
+body.is-mobile.easyview-zen-mode div.status-bar {
+    opacity: 0.8;
 }
 
-body.easyview-zen-mode .status-bar:hover {
-    opacity: 1 !important;
+body.easyview-zen-mode div.status-bar:hover {
+    opacity: 1;
 }
 
-body.easyview-zen-mode .workspace-leaf-content {
-    padding-top: 0 !important;
+body.easyview-zen-mode div.workspace-leaf-content {
+    padding-top: 0;
 }
 
-body.easyview-zen-mode .view-content {
-    padding-top: 28px !important;
+body.easyview-zen-mode div.view-content {
+    padding-top: 28px;
 }
 
-body.easyview-zen-mode .workspace-tabs {
-    padding-top: 0 !important;
+body.easyview-zen-mode div.workspace-tabs {
+    padding-top: 0;
 }
 
 /* HIDE NATIVE VIEW SWITCHER */
-.status-bar-item.plugin-editor-status {
-    display: none !important;
+body div.status-bar .status-bar-item.plugin-editor-status {
+    display: none;
 }
 
 /* ── Delete with Attachments Modal ─────────────────────── */
-.dwa-checkbox-row {
+body div.modal .dwa-checkbox-row {
     display: flex;
     align-items: center;
     gap: 8px;
     margin-top: 12px;
 }
 
-.dwa-image-list {
+body div.modal .dwa-image-list {
     margin: 6px 0 12px 24px;
     font-size: 0.9em;
     color: var(--text-muted);
 }
 
-.dwa-no-images {
+body div.modal .dwa-no-images {
     color: var(--text-muted);
     font-style: italic;
     margin-top: 8px;
 }
 
-.dwa-button-row {
+body div.modal .dwa-button-row {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
@@ -165,7 +172,7 @@ body.easyview-zen-mode .workspace-tabs {
 }
 
 /* ── Recent Notes Modal ─────────────────────────────────── */
-.recent-note-item {
+body div.modal.easyview-recent-notes-modal .recent-note-item {
     padding: 6px 10px;
     border-radius: var(--radius-s);
     cursor: pointer;
@@ -176,20 +183,18 @@ body.easyview-zen-mode .workspace-tabs {
     background: transparent;
     color: inherit;
     text-align: left;
-    transition: none !important;
+    transition: none;
     white-space: normal;
     overflow-wrap: anywhere;
     line-height: 1.4;
     height: auto;
 }
 
-.recent-note-item:hover {
+body div.modal.easyview-recent-notes-modal .recent-note-item:hover {
     background-color: var(--background-modifier-hover);
 }
 
-
-
-.recent-note-item--deleted {
+body div.modal.easyview-recent-notes-modal .recent-note-item--deleted {
     color: var(--text-muted);
     cursor: default;
     font-style: italic;
@@ -201,78 +206,84 @@ body.easyview-zen-mode .workspace-tabs {
 }
 
 /* ── NUCLEAR OPTION: KILL ALL MODAL ANIMATIONS ── */
-.easyview-recent-notes-container,
-.easyview-recent-notes-container *,
-.easyview-recent-notes-modal,
-.easyview-recent-notes-modal * {
-    transition: none !important;
-    transition-duration: 0s !important;
-    animation: none !important;
-    animation-duration: 0s !important;
-    transform: none !important;
+body div.easyview-recent-notes-container,
+body div.easyview-recent-notes-container *,
+body div.easyview-recent-notes-modal,
+body div.easyview-recent-notes-modal * {
+    transition: none;
+    transition-duration: 0s;
+    animation: none;
+    animation-duration: 0s;
+    transform: none;
 }
 
 /* Specifically target Obsidian's mobile slide-down and fade effects */
-.modal-container.easyview-recent-notes-container .modal,
-.modal-container.easyview-recent-notes-container .modal-bg {
-    transition: none !important;
-    transition-duration: 0s !important;
-    animation: none !important;
-    animation-duration: 0s !important;
-    transform: none !important;
-    opacity: 1 !important;
+body div.modal-container.easyview-recent-notes-container .modal,
+body div.modal-container.easyview-recent-notes-container .modal-bg {
+    transition: none;
+    transition-duration: 0s;
+    animation: none;
+    animation-duration: 0s;
+    transform: none;
+    opacity: 1;
 }
 
 /* Force instant removal when Obsidian starts the closing process */
-.modal-container.is-closing.easyview-recent-notes-container,
-.modal-container.is-closing:has(.easyview-recent-notes-modal) {
-    display: none !important;
+body div.modal-container.is-closing.easyview-recent-notes-container {
+    display: none;
 }
 
 /* Force-instant close without inline styles (used by RecentNotesModal). */
-.easyview-force-hide {
-    display: none !important;
+body div.easyview-force-hide,
+body div.modal-container.easyview-force-hide {
+    display: none;
 }
 
 /* ── OPTION B: Mobile Navbar Fix ───────────────────────── */
 
 /* Hide forward button */
-.easyview-has-history-icon .mobile-navbar-action-forward {
-    display: none !important;
+body div.mobile-navbar.easyview-has-history-icon .mobile-navbar-action.mobile-navbar-action-forward,
+body div.app-container .easyview-has-history-icon .mobile-navbar-action-forward {
+    display: none;
 }
 
 /* Force History icon to take over the 'auto-margin' duty */
-.easyview-has-history-icon .easyview-mobile-history {
-    margin-left: auto !important;
-    flex: 0 0 auto !important;
+body div.mobile-navbar.easyview-has-history-icon .easyview-mobile-history,
+body div.app-container .easyview-has-history-icon .easyview-mobile-history {
+    margin-left: auto;
+    flex: 0 0 auto;
 }
 
 /* Remove margin from native Menu button so it sits next to History */
-.easyview-has-history-icon .mobile-navbar-action-menu {
-    margin-left: 0 !important;
+body div.mobile-navbar.easyview-has-history-icon .mobile-navbar-action.mobile-navbar-action-menu,
+body div.app-container .easyview-has-history-icon .mobile-navbar-action-menu {
+    margin-left: 0;
 }
 
 /* Force Square Uniformity & Fluid Height */
-.easyview-mobile-history {
-    width: 48px !important;
-    height: 100% !important;
-    max-height: 100% !important;
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    overflow: hidden !important;
+body div.mobile-navbar .easyview-mobile-history,
+body div.app-container .easyview-mobile-history {
+    width: 48px;
+    height: 100%;
+    max-height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
 }
 
-.easyview-mobile-history .clickable-icon {
-    padding: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
+body div.mobile-navbar .easyview-mobile-history .clickable-icon,
+body div.app-container .easyview-mobile-history .clickable-icon {
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-.easyview-mobile-history .svg-icon {
-    width: 26px !important;
-    height: 26px !important;
+body div.mobile-navbar .easyview-mobile-history .svg-icon,
+body div.app-container .easyview-mobile-history .svg-icon {
+    width: 26px;
+    height: 26px;
 }
