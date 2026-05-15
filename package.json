@@ -1,6 +1,6 @@
 {
     "name": "easyview",
-    "version": "1.0.1",
+    "version": "1.0.0",
     "description": "Adds functionality to easily scale font size and switch themes from the status bar.",
     "main": "main.js",
     "scripts": {
