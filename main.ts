@@ -439,9 +439,9 @@ export default class EasyViewPlugin extends Plugin {
         this.fontSizeSaveTimer = window.setTimeout(() => {
             this.setVaultConfig('baseFontSize', this.pendingFontSize);
             this.updateAppFontSize();
-            document.body.style.removeProperty('--font-text-size');
             this.pendingFontSize = null;
-        }, 300);
+            this.fontSizeSaveTimer = null;
+        }, 200);
 
         if (this.activeNotice) {
             this.activeNotice.hide();
@@ -458,8 +458,8 @@ export default class EasyViewPlugin extends Plugin {
             this.fontSizeSaveTimer = null;
         }
         this.pendingFontSize = null;
-        document.body.style.removeProperty('--font-text-size');
         
+        document.body.style.setProperty('--font-text-size', `${this.settings.defaultFontSize}px`);
         this.setVaultConfig('baseFontSize', this.settings.defaultFontSize);
         this.updateAppFontSize();
         
