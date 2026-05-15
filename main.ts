@@ -145,7 +145,7 @@ export default class EasyViewPlugin extends Plugin {
         this.flushRecentNotesSave();
         if (this.statusBarItem) this.statusBarItem.remove();
         this.removeMobileHistoryIcon();
-        this.getDoc().body.classList.remove('easyview-focus-mode', 'easyview-zen-mode', 'easyview-has-history-icon');
+        this.getDoc().body.classList.remove('easyview-active', 'easyview-focus-mode', 'easyview-zen-mode', 'easyview-has-history-icon');
     }
 
     async loadSettings() {
@@ -289,6 +289,7 @@ export default class EasyViewPlugin extends Plugin {
 
     restoreStates() {
         const doc = this.getDoc();
+        doc.body.classList.add('easyview-active');
         if (this.settings.focusModeActive) doc.body.classList.add('easyview-focus-mode');
         if (this.settings.zenModeActive) doc.body.classList.add('easyview-zen-mode');
     }

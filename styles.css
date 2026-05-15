@@ -287,3 +287,14 @@ body div.app-container .easyview-mobile-history .svg-icon {
     width: 26px;
     height: 26px;
 }
+
+/* ── Font size smooth transition ────────────────────────── */
+/* Scoped to body.easyview-active (added on plugin load,    */
+/* removed on unload) so this never bleeds into Obsidian's  */
+/* own font-size operations. Only .cm-content and           */
+/* .markdown-preview-view consume --font-text-size directly */
+/* as font-size, so those are the only targets needed.      */
+body.easyview-active .cm-content,
+body.easyview-active .markdown-preview-view {
+    transition: font-size 160ms cubic-bezier(0.4, 0, 0.2, 1);
+}
