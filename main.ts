@@ -70,6 +70,9 @@ const DEFAULT_SETTINGS: EasyViewSettings = {
     showMobileHistoryIcon: false
 };
 
+// FIX (Bug 3): Moved out of getLinkedImages so it is allocated once, not on every call.
+const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'tiff', 'avif']);
+
 export default class EasyViewPlugin extends Plugin {
     settings!: EasyViewSettings;
     statusBarItem: HTMLElement | null = null;
@@ -430,7 +433,9 @@ export default class EasyViewPlugin extends Plugin {
         const newSize = Math.min(Math.max(currentSize + change, 10), 30);
         this.pendingFontSize = newSize;
 
-        document.body.style.setProperty('--font-text-size', `${newSize}px`);
+        // FIX (Bug 1): Use this.getDoc().body instead of document.body for popout-window
+        // compatibility. All other DOM operations in this plugin use activeDocument.
+        this.getDoc().body.style.setProperty('--font-text-size', `${newSize}px`);
 
         if (this.fontSizeSaveTimer !== null) {
             window.clearTimeout(this.fontSizeSaveTimer);
@@ -443,8 +448,10 @@ export default class EasyViewPlugin extends Plugin {
             this.fontSizeSaveTimer = null;
         }, 200);
 
+        // FIX (Bug 6): Null activeNotice after hiding so the reference doesn't go stale.
         if (this.activeNotice) {
             this.activeNotice.hide();
+            this.activeNotice = null;
         }
         
         if (this.settings.showNotifications) {
@@ -459,12 +466,16 @@ export default class EasyViewPlugin extends Plugin {
         }
         this.pendingFontSize = null;
         
-        document.body.style.setProperty('--font-text-size', `${this.settings.defaultFontSize}px`);
+        // FIX (Bug 1): Use this.getDoc().body instead of document.body for popout-window
+        // compatibility. All other DOM operations in this plugin use activeDocument.
+        this.getDoc().body.style.setProperty('--font-text-size', `${this.settings.defaultFontSize}px`);
         this.setVaultConfig('baseFontSize', this.settings.defaultFontSize);
         this.updateAppFontSize();
         
+        // FIX (Bug 6): Null activeNotice after hiding so the reference doesn't go stale.
         if (this.activeNotice) {
             this.activeNotice.hide();
+            this.activeNotice = null;
         }
         
         if (this.settings.showNotifications) {
@@ -509,11 +520,12 @@ export default class EasyViewPlugin extends Plugin {
         if (!this.settings.focusModeActive && this.settings.zenModeActive) {
             this.getDoc().body.classList.remove('easyview-zen-mode');
             this.settings.zenModeActive = false;
-            if (this.zenBtn) this.zenBtn.removeClass('is-active');
         }
         const isActive = this.getDoc().body.classList.toggle('easyview-focus-mode');
         this.settings.focusModeActive = isActive;
-        if (this.focusBtn) this.focusBtn.toggleClass('is-active', isActive);
+        // FIX (Bug 4): Removed the now-redundant focusBtn.toggleClass call here.
+        // saveSettings() calls refreshStatusBar() which rebuilds all buttons, reading
+        // settings.focusModeActive (already updated above) to set the initial is-active class.
         void this.saveSettings();
         this.notify(`Focus Mode: ${isActive ? 'ON' : 'OFF'}`);
     }
@@ -522,11 +534,12 @@ export default class EasyViewPlugin extends Plugin {
         if (!this.settings.zenModeActive && this.settings.focusModeActive) {
             this.getDoc().body.classList.remove('easyview-focus-mode');
             this.settings.focusModeActive = false;
-            if (this.focusBtn) this.focusBtn.removeClass('is-active');
         }
         const isActive = this.getDoc().body.classList.toggle('easyview-zen-mode');
         this.settings.zenModeActive = isActive;
-        if (this.zenBtn) this.zenBtn.toggleClass('is-active', isActive);
+        // FIX (Bug 4): Removed the now-redundant zenBtn.toggleClass call here.
+        // saveSettings() calls refreshStatusBar() which rebuilds all buttons, reading
+        // settings.zenModeActive (already updated above) to set the initial is-active class.
         void this.saveSettings();
         this.notify(`Zen Mode: ${isActive ? 'ON' : 'OFF'}`);
     }
@@ -607,12 +620,16 @@ export default class EasyViewPlugin extends Plugin {
         const doc = this.getDoc();
         const navbar = Platform.isMobile ? doc.querySelector<HTMLElement>('.mobile-navbar-actions') : null;
         const forwardBtn = navbar?.querySelector<HTMLElement>('.mobile-navbar-action-forward') ?? null;
-        const existingBtn = navbar?.querySelector<HTMLElement>('.easyview-mobile-history') ?? null;
 
+        // FIX (Bug 5): Guard early-return BEFORE querying existingBtn from the DOM.
+        // Previously existingBtn was queried unconditionally, wasting a DOM lookup on every
+        // layout-change event when the feature is disabled.
         if (!this.settings.showMobileHistoryIcon || !navbar || !forwardBtn) {
             this.removeMobileHistoryIcon();
             return;
         }
+
+        const existingBtn = navbar.querySelector<HTMLElement>('.easyview-mobile-history');
 
         doc.body.classList.add('easyview-has-history-icon');
 
@@ -655,21 +672,23 @@ export default class EasyViewPlugin extends Plugin {
         const cache = this.app.metadataCache.getFileCache(file);
         if (!cache) return [];
 
-        const images = new Set<string>();
-        const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'tiff', 'avif'];
+        // FIX (Bug 2): Use Set<TFile> directly instead of Set<string>.
+        // Previously the function resolved a TFile from the cache, confirmed it was valid,
+        // discarded the object, stored the path, then did a second vault lookup to get the
+        // TFile back. The double-resolution was pure waste and re-introduced the possibility
+        // of a null return from getAbstractFileByPath.
+        const images = new Set<TFile>();
         const links = cache.embeds || [];
 
         for (const link of links) {
             const rawPath = link.link.split('#')[0];
             const resolvedFile = this.app.metadataCache.getFirstLinkpathDest(rawPath, file.path);
-            if (resolvedFile instanceof TFile && imageExtensions.includes(resolvedFile.extension.toLowerCase())) {
-                images.add(resolvedFile.path);
+            if (resolvedFile instanceof TFile && IMAGE_EXTENSIONS.has(resolvedFile.extension.toLowerCase())) {
+                images.add(resolvedFile);
             }
         }
 
-        return Array.from(images)
-            .map(path => this.app.vault.getAbstractFileByPath(path))
-            .filter((file): file is TFile => file instanceof TFile);
+        return Array.from(images);
     }
 
     async promptDelete(file: TFile) {
@@ -910,9 +929,8 @@ class RecentNotesModal extends Modal {
         });
     }
 
-    close() {
-        super.close();
-    }
+    // FIX (Bug 7): Removed the no-op close() override. It only called super.close()
+    // and served no purpose. Dead code.
 
     onClose() {
         this.plugin.recentNotesModal = null;
