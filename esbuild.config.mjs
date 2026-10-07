@@ -1,5 +1,4 @@
 import esbuild from "esbuild";
-import { builtinModules } from "node:module";
 
 const banner =
     `/*
@@ -39,8 +38,7 @@ const context = await esbuild.context({
         "@codemirror/stream-parser",
         "@codemirror/text",
         "@codemirror/tooltip",
-        "@codemirror/view",
-        ...builtinModules],
+        "@codemirror/view"],
     format: "cjs",
     target: "es2018",
     logLevel: "info",

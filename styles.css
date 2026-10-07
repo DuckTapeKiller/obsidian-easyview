@@ -1,103 +1,75 @@
-/* EasyView Plugin Styles */
+/* EasyView */
 
-/* NO HOVER BACKGROUNDS ON CONTAINER */
-body div.status-bar .status-bar-item.plugin-easyview,
-body div.status-bar .status-bar-item.easy-view-container-unique {
+/* ── Status bar buttons ─────────────────────────────────── */
+/* Everything reads the status bar's own variables, which themes re-scope inside the bar,
+   so the buttons match the bar in any theme. The element qualifiers keep the container
+   free of the hover background some themes give every status bar item. */
+body div.status-bar div.status-bar-item.plugin-easyview,
+body div.status-bar div.status-bar-item.plugin-easyview:hover {
     padding: 0;
     gap: 0;
-    background-color: var(--background-primary);
-}
-
-body div.status-bar .status-bar-item.plugin-easyview:hover,
-body div.status-bar .status-bar-item.easy-view-container-unique:hover {
-    background-color: var(--background-primary);
-    border: none;
-    box-shadow: none;
-}
-
-/* BUTTON STYLES */
-body div.status-bar .status-bar-item .easy-view-btn,
-body div.app-container .easy-view-btn {
-    border: none;
-    border-right: 1px solid var(--background-modifier-border);
-    box-shadow: none;
-    color: var(--text-muted);
-    font-weight: normal;
-    cursor: pointer;
-    font-family: var(--font-interface);
     background-color: transparent;
-    font-size: var(--easy-view-btn-size, 13px);
+    border: none;
+    box-shadow: none;
+}
+
+body div.status-bar div.status-bar-item.plugin-easyview .easy-view-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
     height: auto;
     min-height: calc(var(--easy-view-btn-size, 13px) * 2);
     aspect-ratio: 1 / 1;
-    padding: 0;
     margin: 0;
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-    line-height: 1;
+    padding: 0;
+    border: none;
+    border-inline-end: 1px solid var(--background-modifier-border);
     border-radius: 0;
-    box-sizing: border-box;
-}
-
-body div.status-bar .status-bar-item .easy-view-btn:last-child,
-body div.app-container .easy-view-btn:last-child {
-    border-right: none;
-}
-
-body.theme-light div.status-bar .status-bar-item .easy-view-btn:hover,
-body.theme-light div.app-container .easy-view-btn:hover {
+    box-shadow: none;
     background-color: transparent;
+    color: var(--status-bar-text-color);
+    font-family: var(--font-interface);
+    font-size: var(--easy-view-btn-size, 13px);
+    font-weight: normal;
+    line-height: 1;
+    cursor: pointer;
+}
+
+body div.status-bar div.status-bar-item.plugin-easyview .easy-view-btn:last-child {
+    border-inline-end: none;
+}
+
+/* Hovered and active buttons look like Obsidian's own clickable status bar items. */
+body div.status-bar div.status-bar-item.plugin-easyview .easy-view-btn:is(:hover, .is-active) {
+    background-color: var(--background-modifier-hover);
+    box-shadow: none;
     color: var(--text-normal);
-    border-color: transparent;
-    box-shadow: none;
 }
 
-body.theme-dark div.status-bar .status-bar-item .easy-view-btn:hover,
-body.theme-dark div.app-container .easy-view-btn:hover {
-    background-color: transparent;
-    color: #d1d1d1;
-    border-color: transparent;
-    box-shadow: none;
+/* EasyView's view switcher replaces Obsidian's own editing-mode indicator. */
+body div.status-bar:has(.easyview-mode-btn) div.status-bar-item.plugin-editor-status {
+    display: none;
 }
 
-body div.status-bar .status-bar-item .easy-view-btn.is-active,
-body div.app-container .easy-view-btn.is-active {
-    color: var(--text-accent);
-    background-color: var(--background-modifier-hover);
-}
-
-/* Ensure active state persists on hover */
-body.theme-light div.status-bar .status-bar-item .easy-view-btn.is-active:hover,
-body.theme-dark div.status-bar .status-bar-item .easy-view-btn.is-active:hover,
-body.theme-light div.app-container .easy-view-btn.is-active:hover,
-body.theme-dark div.app-container .easy-view-btn.is-active:hover {
-    background-color: var(--background-modifier-hover);
-    color: var(--text-accent);
-}
-
-/* FOCUS MODE */
+/* ── Focus mode ─────────────────────────────────────────── */
 body.easyview-focus-mode div.workspace-ribbon,
 body.easyview-focus-mode div.workspace-split.mod-left-split,
 body.easyview-focus-mode div.workspace-split.mod-right-split {
     display: none;
 }
 
-body.easyview-focus-mode div.workspace-tab-header-container {
-    padding-left: 72px;
+/* With the ribbon and sidebar gone, the top-left tabs sit under the macOS window
+   buttons. Obsidian does not know the sidebar is hidden, so it leaves no room. Each
+   split starts with a resize handle, hence :first-of-type. */
+body.mod-macos.is-hidden-frameless:not(.is-fullscreen).easyview-focus-mode :is(
+    .mod-root > div.workspace-tabs.mod-top:first-of-type,
+    .mod-root > div.workspace-split:first-of-type > div.workspace-tabs.mod-top:first-of-type
+) .workspace-tab-header-container {
+    padding-inline-start: 72px;
 }
 
-body.easyview-focus-mode div.titlebar-button-container {
-    margin-left: 72px;
-}
-
-body.mod-mac.easyview-focus-mode div.view-header-nav-buttons,
-body.mod-mac.easyview-zen-mode div.view-header-nav-buttons {
-    margin-left: 85px;
-    -webkit-app-region: no-drag;
-}
-
-/* ZEN MODE */
+/* ── Zen mode ───────────────────────────────────────────── */
 body.easyview-zen-mode div.workspace-ribbon,
 body.easyview-zen-mode div.workspace-split.mod-left-split,
 body.easyview-zen-mode div.workspace-split.mod-right-split,
@@ -106,28 +78,24 @@ body.easyview-zen-mode div.titlebar {
     display: none;
 }
 
-body.easyview-zen-mode div.status-bar {
+/* The status bar runs the full width and appears while hovered. */
+body.easyview-zen-mode:not(.is-mobile) div.status-bar {
     display: flex;
     position: fixed;
     bottom: 0;
     width: 100%;
     z-index: 1000;
-    background-color: var(--background-primary);
+    background-color: var(--status-bar-background);
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
 }
 
-/* Allow status bar to be visible on mobile in Zen Mode via tap-reveal or constant visibility */
-body.mod-mobile.easyview-zen-mode div.status-bar,
-body.is-mobile.easyview-zen-mode div.status-bar {
-    opacity: 0.8;
-}
-
-body.easyview-zen-mode div.status-bar:hover {
+body.easyview-zen-mode:not(.is-mobile) div.status-bar:hover {
     opacity: 1;
 }
 
-body.easyview-zen-mode div.workspace-leaf-content {
+body.easyview-zen-mode div.workspace-leaf-content,
+body.easyview-zen-mode div.workspace-tabs {
     padding-top: 0;
 }
 
@@ -135,16 +103,17 @@ body.easyview-zen-mode div.view-content {
     padding-top: 28px;
 }
 
-body.easyview-zen-mode div.workspace-tabs {
-    padding-top: 0;
+/* With the tab bar gone, the top-left note's navigation buttons sit under the macOS
+   window buttons. */
+body.mod-macos.is-hidden-frameless:not(.is-fullscreen).easyview-zen-mode :is(
+    .mod-root > div.workspace-tabs.mod-top:first-of-type,
+    .mod-root > div.workspace-split:first-of-type > div.workspace-tabs.mod-top:first-of-type
+) .view-header-nav-buttons {
+    margin-inline-start: 85px;
+    -webkit-app-region: no-drag;
 }
 
-/* HIDE NATIVE VIEW SWITCHER */
-body div.status-bar .status-bar-item.plugin-editor-status {
-    display: none;
-}
-
-/* ── Delete with Attachments Modal ─────────────────────── */
+/* ── Delete with attachments ────────────────────────────── */
 body div.modal .dwa-checkbox-row {
     display: flex;
     align-items: center;
@@ -171,23 +140,27 @@ body div.modal .dwa-button-row {
     margin-top: 16px;
 }
 
-/* ── Recent Notes Modal ─────────────────────────────────── */
-body div.modal.easyview-recent-notes-modal .recent-note-item {
-    padding: 6px 10px;
-    border-radius: var(--radius-s);
-    cursor: pointer;
-    font-size: 0.95em;
+/* ── Recent notes ───────────────────────────────────────── */
+body div.modal.easyview-recent-notes-modal .recent-note-item,
+body div.modal.easyview-recent-notes-modal .recent-note-item--deleted {
     display: block;
     width: 100%;
-    border: none;
-    background: transparent;
-    color: inherit;
-    text-align: left;
-    transition: none;
+    height: auto;
+    padding: 6px 10px;
+    font-size: 0.95em;
+    line-height: 1.4;
+    text-align: start;
     white-space: normal;
     overflow-wrap: anywhere;
-    line-height: 1.4;
-    height: auto;
+}
+
+body div.modal.easyview-recent-notes-modal .recent-note-item {
+    border: none;
+    border-radius: var(--radius-s);
+    box-shadow: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
 }
 
 body div.modal.easyview-recent-notes-modal .recent-note-item:hover {
@@ -196,104 +169,84 @@ body div.modal.easyview-recent-notes-modal .recent-note-item:hover {
 
 body div.modal.easyview-recent-notes-modal .recent-note-item--deleted {
     color: var(--text-muted);
-    cursor: default;
     font-style: italic;
-    padding: 6px 10px;
-    font-size: 0.95em;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    line-height: 1.4;
 }
 
-/* ── NUCLEAR OPTION: KILL ALL MODAL ANIMATIONS ── */
-body div.easyview-recent-notes-container,
-body div.easyview-recent-notes-container *,
-body div.easyview-recent-notes-modal,
-body div.easyview-recent-notes-modal * {
-    transition: none;
-    transition-duration: 0s;
-    animation: none;
-    animation-duration: 0s;
-    transform: none;
+/* The homepage, pinned above the history. */
+body div.modal.easyview-recent-notes-modal .recent-note-item.mod-home {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    border-radius: 0;
 }
 
-/* Specifically target Obsidian's mobile slide-down and fade effects */
-body div.modal-container.easyview-recent-notes-container .modal,
-body div.modal-container.easyview-recent-notes-container .modal-bg {
+body div.modal.easyview-recent-notes-modal .recent-note-icon {
+    display: flex;
+    flex: none;
+    color: var(--icon-color);
+}
+
+/* The modal opens and closes at once, without Obsidian's animations (they slide on
+   mobile), so it is quick to use as a switcher. */
+body div.modal-container.easyview-recent-notes-container,
+body div.modal-container.easyview-recent-notes-container * {
     transition: none;
-    transition-duration: 0s;
     animation: none;
-    animation-duration: 0s;
+}
+
+body div.modal-container.easyview-recent-notes-container :is(.modal, .modal-bg) {
     transform: none;
     opacity: 1;
 }
 
-/* Force instant removal when Obsidian starts the closing process */
-body div.modal-container.is-closing.easyview-recent-notes-container {
+body div.modal-container.easyview-recent-notes-container:is(.is-closing, .easyview-force-hide) {
     display: none;
 }
 
-/* Force-instant close without inline styles (used by RecentNotesModal). */
-body div.easyview-force-hide,
-body div.modal-container.easyview-force-hide {
+/* ── Mobile history icon ────────────────────────────────── */
+/* The icon takes the forward button's place in the navigation bar. */
+body.easyview-has-history-icon div.mobile-navbar .mobile-navbar-action-forward {
     display: none;
 }
 
-/* ── OPTION B: Mobile Navbar Fix ───────────────────────── */
-
-/* Hide forward button */
-body div.mobile-navbar.easyview-has-history-icon .mobile-navbar-action.mobile-navbar-action-forward,
-body div.app-container .easyview-has-history-icon .mobile-navbar-action-forward {
-    display: none;
-}
-
-/* Force History icon to take over the 'auto-margin' duty */
-body div.mobile-navbar.easyview-has-history-icon .easyview-mobile-history,
-body div.app-container .easyview-has-history-icon .easyview-mobile-history {
-    margin-left: auto;
+body.easyview-has-history-icon div.mobile-navbar .easyview-mobile-history {
+    margin-inline-start: auto;
     flex: 0 0 auto;
 }
 
-/* Remove margin from native Menu button so it sits next to History */
-body div.mobile-navbar.easyview-has-history-icon .mobile-navbar-action.mobile-navbar-action-menu,
-body div.app-container .easyview-has-history-icon .mobile-navbar-action-menu {
-    margin-left: 0;
+body.easyview-has-history-icon div.mobile-navbar .mobile-navbar-action-menu {
+    margin-inline-start: 0;
 }
 
-/* Force Square Uniformity & Fluid Height */
-body div.mobile-navbar .easyview-mobile-history,
-body div.app-container .easyview-mobile-history {
+body div.mobile-navbar .easyview-mobile-history {
+    display: flex;
+    justify-content: center;
+    align-items: center;
     width: 48px;
     height: 100%;
     max-height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
     overflow: hidden;
 }
 
-body div.mobile-navbar .easyview-mobile-history .clickable-icon,
-body div.app-container .easyview-mobile-history .clickable-icon {
-    padding: 0;
-    width: 100%;
-    height: 100%;
+body div.mobile-navbar .easyview-mobile-history .clickable-icon {
     display: flex;
     justify-content: center;
     align-items: center;
+    width: 100%;
+    height: 100%;
+    padding: 0;
 }
 
-body div.mobile-navbar .easyview-mobile-history .svg-icon,
-body div.app-container .easyview-mobile-history .svg-icon {
+body div.mobile-navbar .easyview-mobile-history .svg-icon {
     width: 26px;
     height: 26px;
 }
 
-/* ── Font size smooth transition ────────────────────────── */
-/* Scoped to body.easyview-active (added on plugin load,    */
-/* removed on unload) so this never bleeds into Obsidian's  */
-/* own font-size operations. Only .cm-content and           */
-/* .markdown-preview-view consume --font-text-size directly */
-/* as font-size, so those are the only targets needed.      */
+/* ── Font size ──────────────────────────────────────────── */
+/* A size change eases in. easyview-active is on <body> only while the plugin is loaded. */
 body.easyview-active .cm-content,
 body.easyview-active .markdown-preview-view {
     transition: font-size 160ms cubic-bezier(0.4, 0, 0.2, 1);

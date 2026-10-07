@@ -1,35 +1,30 @@
+import { defineConfig } from "eslint/config";
+import obsidianmd from "eslint-plugin-obsidianmd";
+import tseslint from "typescript-eslint";
+import globals from "globals";
 
-import eslint from '@eslint/js';
-import tseslint from 'typescript-eslint';
-import obsidianPlugin from 'eslint-plugin-obsidianmd';
-import globals from 'globals';
-
-export default tseslint.config(
-    eslint.configs.recommended,
-    ...tseslint.configs.recommended,
+export default defineConfig([
     {
-        ignores: ['node_modules', 'dist', 'main.js', 'coverage', 'jest.config.js', 'version-bump.mjs', 'esbuild.config.mjs'],
+        ignores: ["node_modules/", "main.js"],
     },
+    ...obsidianmd.configs.recommended,
     {
-        files: ['**/*.ts', '**/*.tsx'],
+        files: ["**/*.ts"],
         languageOptions: {
-            ecmaVersion: 2020,
-            globals: {
-                ...globals.browser,
-                ...globals.node,
-            },
             parserOptions: {
-                project: './tsconfig.json', // Ensure easyview has a valid tsconfig
+                projectService: true,
+                tsconfigRootDir: import.meta.dirname,
             },
-        },
-        plugins: {
-            'obsidianmd': obsidianPlugin,
-        },
-        rules: {
-            '@typescript-eslint/no-explicit-any': 'warn',
-            '@typescript-eslint/no-unused-vars': 'off',
-            '@typescript-eslint/ban-ts-comment': 'off',
-            ...obsidianPlugin.configs.recommended.rules,
         },
     },
-);
+    {
+        files: ["**/*.mjs"],
+        ...tseslint.configs.disableTypeChecked,
+    },
+    {
+        files: ["**/*.mjs"],
+        languageOptions: {
+            globals: globals.node,
+        },
+    },
+]);
