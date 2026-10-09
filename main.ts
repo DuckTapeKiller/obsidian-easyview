@@ -1,4 +1,4 @@
-import { App, getLinkpath, MarkdownView, Menu, Modal, Notice, Platform, Plugin, PluginSettingTab, Setting, setIcon, TFile } from 'obsidian';
+import { App, getLinkpath, ItemView, MarkdownView, Menu, Modal, Notice, Platform, Plugin, PluginSettingTab, Setting, setIcon, TFile } from 'obsidian';
 import type { SettingDefinition, SettingDefinitionGroup, SettingDefinitionItem } from 'obsidian';
 
 interface EasyViewSettings {
@@ -73,6 +73,14 @@ interface AppInternals {
     // Obsidian 1.14 and later keep the font size per device, in localStorage.
     getBaseFontSize?: () => number;
     setBaseFontSize?: (size: number) => void;
+}
+
+// Obsidian's web viewer zooms its own page, in 10% steps between 50% and 300%.
+interface WebViewerView extends ItemView {
+    zoomIn(): void;
+    zoomOut(): void;
+    zoomReset(): void;
+    webview?: { getZoomFactor?: () => number };
 }
 
 interface WorkspaceInternals {
@@ -367,9 +375,30 @@ export default class EasyViewPlugin extends Plugin {
         app.updateFontSize();
     }
 
+    // A web page cannot see Obsidian's font size, so in a web viewer tab the font
+    // buttons zoom the page instead, as a browser does.
+    getActiveWebViewer(): WebViewerView | null {
+        const view = this.app.workspace.getActiveViewOfType(ItemView);
+        if (view?.getViewType() !== 'webviewer') return null;
+        const webViewer = view as WebViewerView;
+        return typeof webViewer.zoomIn === 'function' ? webViewer : null;
+    }
+
+    notifyPageZoom(webViewer: WebViewerView) {
+        const factor = webViewer.webview?.getZoomFactor?.();
+        if (factor !== undefined) this.notify(`Page zoom: ${Math.round(factor * 100)}%`);
+    }
+
     // Clicks show at once and are saved together a moment later, so a run of clicks
     // makes one change instead of one per click.
     adjustFontSize(change: number) {
+        const webViewer = this.getActiveWebViewer();
+        if (webViewer) {
+            if (change > 0) webViewer.zoomIn();
+            else webViewer.zoomOut();
+            this.notifyPageZoom(webViewer);
+            return;
+        }
         const size = Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, (this.pendingFontSize ?? this.getFontSize()) + change));
         this.pendingFontSize = size;
         document.body.style.setProperty('--font-text-size', `${size}px`);
@@ -379,6 +408,12 @@ export default class EasyViewPlugin extends Plugin {
     }
 
     resetFontSize() {
+        const webViewer = this.getActiveWebViewer();
+        if (webViewer) {
+            webViewer.zoomReset();
+            this.notifyPageZoom(webViewer);
+            return;
+        }
         this.pendingFontSize = this.settings.defaultFontSize;
         this.flushFontSize();
         this.notify(`Font size reset to ${this.settings.defaultFontSize}px`);

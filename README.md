@@ -37,6 +37,8 @@ Easy View places convenient buttons in the Obsidian status bar for one-click acc
 | **Toggle zen mode** | `◉` | Ultra focus—hides everything except content |
 | **Open recent notes** | `↺` | Opens a modal listing your recently opened notes |
 
+In a web viewer tab, the three font size buttons and commands zoom the web page instead, in 10% steps from 50% to 300%, and reset returns it to 100%. A web page cannot use Obsidian's font size, so this works like zooming in a browser.
+
 All buttons can be individually enabled or disabled in the plugin settings.
 
 ---
