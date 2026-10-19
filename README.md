@@ -1,5 +1,7 @@
 ![Easy View Art](https://github.com/user-attachments/assets/d2f98788-73ed-44b0-8488-5fa75f4cf914)
 
+<a href="https://community.obsidian.md/plugins/easyview"><img alt="Get it on Obsidian" src="assets/get-it-on-obsidian.svg"></a>
+
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/ducktapekiller)
 
 **Easy View** is a minimalist status bar utility for Obsidian that provides instant control over your writing environment. Adjust font sizes, toggle themes, switch between focus modes, and manage your layout—all from the status bar, right-click context menu, ribbon menu (on mobile), or via keyboard shortcuts.
