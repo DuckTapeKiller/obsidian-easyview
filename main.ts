@@ -122,6 +122,8 @@ const MAX_FONT_SIZE = 30;
 const NOTICE_DURATION = 1500;
 // One ribbon item whatever its action, see refreshRibbonIcon().
 const RIBBON_TITLE = 'EasyView';
+const KOFI_URL = 'https://ko-fi.com/ducktapekiller';
+const ISSUES_URL = 'https://github.com/DuckTapeKiller/obsidian-easyview/issues';
 
 function plural(count: number, noun: string) {
     return `${count} ${noun}${count === 1 ? '' : 's'}`;
@@ -146,7 +148,7 @@ export default class EasyViewPlugin extends Plugin {
         await this.loadSettings();
         this.addSettingTab(new EasyViewSettingTab(this.app, this));
         this.registerCommands();
-        document.body.addClass('easyview-active');
+        this.mainBody.addClass('easyview-active');
         this.applyLayoutClasses();
         this.refreshRibbonIcon();
 
@@ -191,7 +193,14 @@ export default class EasyViewPlugin extends Plugin {
         this.flushFontSize();
         this.flushRecentNotesSave();
         this.removeMobileHistoryIcon();
-        document.body.removeClasses(['easyview-active', 'easyview-focus-mode', 'easyview-zen-mode']);
+        this.mainBody.removeClasses(['easyview-active', 'easyview-focus-mode', 'easyview-zen-mode', 'easyview-has-mode-btn']);
+    }
+
+    // The main window's <body>. The classes and the font size preview set here change the
+    // ribbon, the sidebars and the status bar, which only the main window has, so popout
+    // windows are left as they are.
+    get mainBody(): HTMLElement {
+        return this.app.workspace.containerEl.ownerDocument.body;
     }
 
     async loadSettings() {
@@ -304,6 +313,8 @@ export default class EasyViewPlugin extends Plugin {
             this.themeBtn = this.createBtn(bar, actions['toggle-theme']);
             this.updateThemeIcons();
         }
+        // With the view switcher shown, Obsidian's own editing-mode indicator is hidden.
+        this.mainBody.toggleClass('easyview-has-mode-btn', this.modeBtn !== null);
     }
 
     createBtn(parent: HTMLElement, action: Action, cls?: string) {
@@ -401,7 +412,7 @@ export default class EasyViewPlugin extends Plugin {
         }
         const size = Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, (this.pendingFontSize ?? this.getFontSize()) + change));
         this.pendingFontSize = size;
-        document.body.style.setProperty('--font-text-size', `${size}px`);
+        this.mainBody.style.setProperty('--font-text-size', `${size}px`);
         if (this.fontSizeSaveTimer !== null) window.clearTimeout(this.fontSizeSaveTimer);
         this.fontSizeSaveTimer = window.setTimeout(() => this.flushFontSize(), 200);
         this.notify(`Font size: ${size}px`);
@@ -430,7 +441,7 @@ export default class EasyViewPlugin extends Plugin {
 
     // The body class is what is on screen, also when Obsidian follows the system theme.
     isDark() {
-        return document.body.hasClass('theme-dark');
+        return activeDocument.body.hasClass('theme-dark');
     }
 
     toggleTheme() {
@@ -477,8 +488,8 @@ export default class EasyViewPlugin extends Plugin {
     // ── Focus and zen mode ────────────────────────────────────
 
     applyLayoutClasses() {
-        document.body.toggleClass('easyview-focus-mode', this.settings.focusModeActive);
-        document.body.toggleClass('easyview-zen-mode', this.settings.zenModeActive);
+        this.mainBody.toggleClass('easyview-focus-mode', this.settings.focusModeActive);
+        this.mainBody.toggleClass('easyview-zen-mode', this.settings.zenModeActive);
     }
 
     // The two modes exclude each other: turning one on turns the other off.
@@ -523,7 +534,7 @@ export default class EasyViewPlugin extends Plugin {
 
     updateMobileHistoryIcon() {
         const navbar = Platform.isMobile && this.settings.showMobileHistoryIcon
-            ? document.querySelector<HTMLElement>('.mobile-navbar-actions')
+            ? activeDocument.querySelector<HTMLElement>('.mobile-navbar-actions')
             : null;
         const forwardBtn = navbar?.querySelector<HTMLElement>('.mobile-navbar-action-forward');
         if (!navbar || !forwardBtn) {
@@ -531,7 +542,7 @@ export default class EasyViewPlugin extends Plugin {
             return;
         }
 
-        document.body.addClass('easyview-has-history-icon');
+        this.mainBody.addClass('easyview-has-history-icon');
         if (this.mobileHistoryBtn && navbar.contains(this.mobileHistoryBtn)) return;
 
         const btn = createDiv({
@@ -550,7 +561,7 @@ export default class EasyViewPlugin extends Plugin {
     }
 
     removeMobileHistoryIcon() {
-        document.body.removeClass('easyview-has-history-icon');
+        this.mainBody.removeClass('easyview-has-history-icon');
         this.mobileHistoryBtn?.remove();
         this.mobileHistoryBtn = null;
     }
@@ -663,7 +674,10 @@ type SettingSpec =
     | { kind: 'slider'; key: SettingKey; name: string; desc?: string; min: number; max: number; step: number }
     | { kind: 'number'; key: SettingKey; name: string; desc?: string; min: number; max: number }
     | { kind: 'dropdown'; key: SettingKey; name: string; desc?: string; options: Record<string, string> }
-    | { kind: 'button'; name: string; desc?: string; text: string; onClick: () => Promise<void> };
+    | { kind: 'button'; name: string; desc?: string; text: string; onClick: () => Promise<void> }
+    | { kind: 'kofi'; name: string; desc?: string }
+    | { kind: 'link'; name: string; desc?: string; text: string; href: string }
+    | { kind: 'info'; name: string; desc?: string };
 
 interface SettingSection {
     heading?: string;
@@ -744,6 +758,14 @@ class EasyViewSettingTab extends PluginSettingTab {
                     { kind: 'button', name: 'Clear history', text: 'Clear', onClick: () => this.clearHistory() },
                 ],
             },
+            {
+                heading: 'Support',
+                items: [
+                    { kind: 'kofi', name: 'Support on Ko-fi' },
+                    { kind: 'link', name: 'Report a bug or suggest an idea', desc: 'Open an issue on GitHub.', text: 'Open issues', href: ISSUES_URL },
+                    { kind: 'info', name: 'Version', desc: `${this.plugin.manifest.name} ${this.plugin.manifest.version}` },
+                ],
+            },
         ];
     }
 
@@ -770,7 +792,42 @@ class EasyViewSettingTab extends PluginSettingTab {
                 return { name, desc, control: { type: 'dropdown', key: spec.key, options: spec.options } };
             case 'button':
                 return { name, desc, render: setting => { setting.addButton(b => b.setButtonText(spec.text).onClick(spec.onClick)); } };
+            case 'kofi':
+                return { name, aliases: ['Donate'], render: setting => { this.renderSupportCard(setting); } };
+            case 'link':
+                return { name, desc, render: setting => { this.renderLink(setting, spec.text, spec.href); } };
+            case 'info':
+                // A row needs a render to be drawn; this one only shows its name and description.
+                return { name, desc, render: () => undefined };
         }
+    }
+
+    // The Ko-fi card fills its row: the row's name stays for settings search only.
+    renderSupportCard(setting: Setting) {
+        const { settingEl } = setting;
+        const pluginName = this.plugin.manifest.name;
+        settingEl.empty();
+        settingEl.addClass('easyview-support-row');
+        const card = settingEl.createDiv({ cls: 'easyview-support' });
+        setIcon(card.createDiv({ cls: 'easyview-support-icon' }), 'heart');
+        card.createDiv({ cls: 'easyview-support-title', text: `Enjoying ${pluginName}?` });
+        const about = card.createEl('p', {
+            text: `${pluginName} is free and open source, made and maintained by DuckTapeKiller. If it is useful to you, you can support its development on `
+        });
+        // The name is kept on one line, so a narrow screen never breaks it at its hyphen.
+        about.createSpan({ cls: 'easyview-support-nowrap', text: 'Ko-fi' });
+        about.appendText('.');
+        const kofi = card.createEl('a', {
+            cls: 'easyview-support-button',
+            href: KOFI_URL,
+            attr: { 'aria-label': 'Support DuckTapeKiller on Ko-fi' },
+        });
+        setIcon(kofi.createSpan({ cls: 'easyview-support-button-icon' }), 'coffee');
+        kofi.createSpan({ text: 'Support on Ko-fi' });
+    }
+
+    renderLink(setting: Setting, text: string, href: string) {
+        setting.controlEl.createEl('a', { cls: 'easyview-support-link', text, href });
     }
 
     async setControlValue(key: string, value: unknown): Promise<void> {
@@ -816,6 +873,14 @@ class EasyViewSettingTab extends PluginSettingTab {
                         break;
                     case 'button':
                         setting.addButton(b => b.setButtonText(spec.text).onClick(spec.onClick));
+                        break;
+                    case 'kofi':
+                        this.renderSupportCard(setting);
+                        break;
+                    case 'link':
+                        this.renderLink(setting, spec.text, spec.href);
+                        break;
+                    case 'info':
                         break;
                 }
             }

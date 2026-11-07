@@ -47,8 +47,9 @@ body div.status-bar div.status-bar-item.plugin-easyview .easy-view-btn:is(:hover
     color: var(--text-normal);
 }
 
-/* EasyView's view switcher replaces Obsidian's own editing-mode indicator. */
-body div.status-bar:has(.easyview-mode-btn) div.status-bar-item.plugin-editor-status {
+/* EasyView's view switcher replaces Obsidian's own editing-mode indicator. The plugin
+   sets easyview-has-mode-btn on <body> while the switcher is in the status bar. */
+body.easyview-has-mode-btn div.status-bar div.status-bar-item.plugin-editor-status {
     display: none;
 }
 
@@ -250,4 +251,100 @@ body div.mobile-navbar .easyview-mobile-history .svg-icon {
 body.easyview-active .cm-content,
 body.easyview-active .markdown-preview-view {
     transition: font-size 160ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Settings: support ──────────────────────────────────── */
+/* The Ko-fi card fills its settings row. Everything reads Obsidian's theme variables, so
+   the card follows the theme, light or dark. */
+.setting-item.easyview-support-row {
+    display: block;
+}
+
+.easyview-support {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--size-4-2);
+    margin: var(--size-4-4) 0 var(--size-4-2);
+    padding: var(--size-4-6) var(--size-4-4);
+    border: var(--border-width) solid var(--background-modifier-border);
+    border-radius: var(--radius-l);
+    background-color: var(--background-secondary);
+    text-align: center;
+}
+
+.easyview-support-icon {
+    display: inline-flex;
+    color: var(--color-red);
+}
+
+.easyview-support-icon svg {
+    width: var(--icon-xl);
+    height: var(--icon-xl);
+    fill: currentColor;
+}
+
+.easyview-support-title {
+    font-size: var(--font-ui-large);
+    font-weight: var(--font-semibold);
+    color: var(--text-normal);
+}
+
+.easyview-support p {
+    max-width: 34em;
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    line-height: var(--line-height-normal);
+}
+
+.easyview-support-nowrap {
+    white-space: nowrap;
+}
+
+.easyview-support-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    margin-top: var(--size-4-2);
+    padding: var(--size-4-2) var(--size-4-4);
+    border-radius: var(--radius-m);
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    font-weight: var(--font-semibold);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.easyview-support-button:hover {
+    background-color: var(--interactive-accent-hover);
+    color: var(--text-on-accent);
+}
+
+.easyview-support-button-icon {
+    display: inline-flex;
+}
+
+.easyview-support-button-icon svg {
+    width: var(--icon-s);
+    height: var(--icon-s);
+}
+
+/* The issues link looks like Obsidian's own buttons in a settings row. */
+.easyview-support-link {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--size-4-1) var(--size-4-3);
+    border-radius: var(--button-radius);
+    background-color: var(--interactive-normal);
+    box-shadow: var(--input-shadow);
+    color: var(--text-normal);
+    font-size: var(--font-ui-small);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.easyview-support-link:hover {
+    background-color: var(--interactive-hover);
+    color: var(--text-normal);
 }

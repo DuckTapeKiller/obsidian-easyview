@@ -215,6 +215,10 @@ Toggle status bar buttons on or off individually:
 
 Choose which items appear when you right-click the status bar. Independent from the Visibility settings — you can hide a button from the status bar but still have it accessible via the context menu.
 
+### Support
+
+The last section of the settings has the Ko-fi link from [Support](#support) below, a link to report a bug or suggest an idea in the [issues](https://github.com/DuckTapeKiller/obsidian-easyview/issues), and the installed version.
+
 ---
 
 ## Visual Design

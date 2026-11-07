@@ -13,11 +13,11 @@
         "skipLibCheck": true,
         "lib": [
             "DOM",
-            "ES5",
-            "ES6",
-            "ES7"
+            "ES2021"
         ],
-        "strict": true
+        "types": [],
+        "strict": true,
+        "useUnknownInCatchVariables": true
     },
     "include": [
         "**/*.ts",
